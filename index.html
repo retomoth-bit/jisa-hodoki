@@ -529,7 +529,9 @@ function planIntl(st){
     if(R>0)notes.push(`寝る90分前（${fmt(B-90)}）に湯船。なければ熱めのシャワーを10分`);
     if(R>0&&d<=3)notes.push(melaNote(dir,CBT0+dir*R,W,B));
     const r=makeDay({tag:R>0?(d===1?'到着日':`到着${d}日目`):'同調',date:md(addDays(arrDate,d-1)),iso:isoD(addDays(arrDate,d-1)),zone:dc.zone,city:dc,tz:dName+'時刻',dir:dd,cbt:CBT0+dir*R,pb:B,wake:W,bed:B,nap,notes,blank:blank||undefined});
-    if(travel){r.travel=travel;r.arr=arrMin}
+    if(travel){r.travel=travel;r.arr=arrMin;
+      /* 朝（朝食時刻〜昼食の1時間前）に着いたら、到着直後に朝食を少量。内臓の時計を現地の朝に合わせる */
+      if(arrMin>=W && arrMin<W+270 && R>0){r.meals=[{t:mod(arrMin+30),n:'朝'},...r.meals.filter(m=>m.t>arrMin+30)];r.notes.splice(1,0,`着いたら${fmt(arrMin+30)}ごろに、空腹でなくても朝食を少量。コーヒーもここで`)}}
     post.push(r);
   }
   groups.push({title:`到着後（${dName}の時刻）`,days:post});
