@@ -179,7 +179,7 @@ input[type=range]{padding:0;background:transparent;border:0;accent-color:var(--s
           <button type="button" id="addReturn" class="ghost">＋ 帰りの便</button>
         </div>
         <label>最初の移動の準備日数 <span class="rangeval" id="prepVal">3日</span><input type="range" id="prep" min="0" max="7" value="3"></label>
-        <p class="hint">A→B→C→A のように何区間でも入れられる。体内時計は区間ごとにリセットせず、旅程全体を通して計算する。時計を進めるか遅らせるかは、早く合う方を自動で選ぶ。</p>
+        <p class="hint">移動時間は行き先を選ぶと距離からの目安が入るので、乗継込みの実際の時間に直す。A→B→C→A のように何区間でも入れられる。体内時計は区間ごとにリセットせず、旅程全体を通して計算する。時計を進めるか遅らせるかは、早く合う方を自動で選ぶ。</p>
       </fieldset>
 
       <fieldset data-for="early" hidden>
@@ -492,7 +492,7 @@ function planIntl(st){
   const legs=(st.legs||[]).filter(l=>l.to&&l.date&&l.time&&+l.hours>0);
   if(!legs.length)return{summary:[],lead:'移動を1つ以上入れてください。',groups:[]};
   const L=[];let from=home.name;
-  for(const l of legs){L.push(legTimes(from,l.to,l.date,l.time,l.hours));from=l.to}
+  legs.forEach((l,i)=>{if(l.to===from)throw new Error(`移動${i+1}の行き先が出発地（${from}）と同じです。行き先を変えるか、この移動を消してください`);L.push(legTimes(from,l.to,l.date,l.time,l.hours));from=l.to});
   for(let i=1;i<L.length;i++)if(L[i].depUtc<=L[i-1].arrUtc)throw new Error(`移動${i+1}の出発が、移動${i}の到着より前になっています`);
   const P=+st.prep,groups=[],stops=[];
   let Bz=L[0].offO;                      // 体が合っているタイムゾーン（UTCからの分）
@@ -800,13 +800,17 @@ function renderLegs(){
   $('legs').innerHTML=legs.map((l,i)=>`<div class="leg" data-i="${i}">
     <div class="leghead"><b>移動${i+1}</b><span class="from"></span>${legs.length>1?`<button type="button" class="x" data-del="${i}" aria-label="移動${i+1}を削除">×</button>`:''}</div>
     <div class="row2"><label>行き先<select id="leg${i}_to" data-k="to">${CITY_OPTS}</select></label>
-    <label>移動時間（乗継込み）<input type="number" id="leg${i}_hours" data-k="hours" min="1" max="40" step="0.5"></label></div>
+    <label>移動時間（乗継込み）<input type="number" title="行き先を選ぶと距離からの目安が入る。実際の時間に直す" id="leg${i}_hours" data-k="hours" min="1" max="40" step="0.5"></label></div>
     <div class="row2"><label>出発日（現地）<input type="date" id="leg${i}_date" data-k="date"></label>
     <label>出発時刻（現地）<input type="time" id="leg${i}_time" data-k="time" step="300"></label></div></div>`).join('');
   legs.forEach((l,i)=>['to','hours','date','time'].forEach(k=>{$(`leg${i}_${k}`).value=l[k]}));
   syncLegFrom();
   $('addLeg').disabled=$('addReturn').disabled=legs.length>=MAXLEGS;
 }
+/* 大圏距離から移動時間の目安（巡航約800km/h＋地上の前後30分、30分刻み） */
+function estHours(a,b){const A=city(a),B=city(b),R=6371,t=Math.PI/180;
+  const h=Math.sin((B.lat-A.lat)*t/2)**2+Math.cos(A.lat*t)*Math.cos(B.lat*t)*Math.sin((B.lon-A.lon)*t/2)**2;
+  const km=2*R*Math.asin(Math.sqrt(h));return Math.max(1,Math.round((km/800+0.5)*2)/2)}
 function plusDays(iso,n){const d=new Date(iso+'T00:00:00Z');return isoD(addDays(d,n))}
 function init(){
   CITY_OPTS=REGIONS.map(r=>`<optgroup label="${r}">${CITIES.filter(c=>c[4]===r).map(([n])=>`<option value="${n}">${n}</option>`).join('')}</optgroup>`).join('');
@@ -819,12 +823,13 @@ function init(){
   renderLegs();
   document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{mode=b.dataset.mode;render()}));
   $('legs').addEventListener('input',e=>{const el=e.target,box=el.closest('.leg');if(!box||!el.dataset.k)return;
-    const i=+box.dataset.i;legs[i][el.dataset.k]=el.dataset.k==='hours'?+el.value:el.value;if(el.dataset.k==='to')syncLegFrom()});
+    const i=+box.dataset.i;legs[i][el.dataset.k]=el.dataset.k==='hours'?+el.value:el.value;
+    if(el.dataset.k==='to'){legs[i].hours=estHours(legFrom(i),legs[i].to);$(`leg${i}_hours`).value=legs[i].hours;syncLegFrom()}});
   $('legs').addEventListener('click',e=>{const b=e.target.closest('[data-del]');if(!b)return;legs.splice(+b.dataset.del,1);renderLegs();render()});
   $('addLeg').addEventListener('click',()=>{const l=legs[legs.length-1];const to=['ロンドン','パリ','ニューヨーク'].find(n=>n!==l.to);
-    legs.push({to,date:plusDays(l.date,3),time:'10:00',hours:2});renderLegs();render()});
+    legs.push({to,date:plusDays(l.date,3),time:'10:00',hours:estHours(l.to,to)});renderLegs();render()});
   $('addReturn').addEventListener('click',()=>{const l=legs[legs.length-1];
-    legs.push({to:$('origin').value,date:plusDays(l.date,4),time:'19:00',hours:+legs[0].hours||12});renderLegs();render()});
+    legs.push({to:$('origin').value,date:plusDays(l.date,4),time:'19:00',hours:estHours(l.to,$('origin').value)});renderLegs();render()});
   $('f').addEventListener('input',render);$('f').addEventListener('submit',e=>e.preventDefault());
   $('calBtn').addEventListener('click',calAdd);
   if(!IN_CLAUDE)$('calInfo').textContent='「光を浴びる」「光を避ける」「就寝」を通知付きの予定ファイル（.ics）で保存。iPhone・Googleカレンダー・Outlookに取り込める。';
