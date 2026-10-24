@@ -234,7 +234,7 @@ const mod=x=>((x%M)+M)%M;
 const sdiff=(a,b)=>mod(a-b+720)-720;
 const parseT=s=>{const[h,m]=(s||'0:0').split(':').map(Number);return h*60+(m||0)};
 const fmt=m=>{m=mod(Math.round(m/5)*5);return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0')};
-const hrs=m=>{const h=Math.round(Math.abs(m)/30)/2;return (h%1?h.toFixed(1):h)+'時間'};
+const hrs=m=>{const t=Math.round(Math.abs(m)/15)*15,h=Math.floor(t/60),mi=t%60;return((h?h+'時間':'')+(mi?mi+'分':''))||'0時間'};
 function lin(s,e){s=mod(s);e=mod(e);if(s===e)return[];return e>s?[[s,e]]:[[s,M],[0,e]]}
 function inter(a,b){const r=[];for(const[x1,y1]of a)for(const[x2,y2]of b){const s=Math.max(x1,x2),e=Math.min(y1,y2);if(e>s)r.push([s,e])}return r}
 function minus(a,b){let res=a.map(x=>x.slice());for(const[bs,be]of b){const n=[];for(const[s,e]of res){if(be<=s||bs>=e){n.push([s,e]);continue}if(bs>s)n.push([s,bs]);if(be<e)n.push([be,e])}res=n}return res}
