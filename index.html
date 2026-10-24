@@ -153,6 +153,8 @@ input[type=range]{padding:0;background:transparent;border:0;accent-color:var(--s
           <label>起床<input type="time" id="wake" value="07:00" step="900"></label>
         </div>
         <label>いる場所（出発地）<select id="origin"></select></label>
+        <label>睡眠中に心拍が最も下がる時刻（任意）<input type="time" id="hrMin" step="300"></label>
+        <p class="hint">起床は、目覚ましなしで起きる日の時刻が理想。スマートリングなどで心拍が最も下がる時刻がわかれば入れる。体内時計の位置をその時刻で決める。</p>
       </fieldset>
 
       <fieldset data-for="intl">
@@ -210,23 +212,25 @@ input[type=range]{padding:0;background:transparent;border:0;accent-color:var(--s
   <div class="guide">
     <section>
       <h3>軸は「体温最低点」</h3>
-      <p>体内時計の位置は、深部体温が一番下がる時刻で表せる。目安は普段の起床の約2時間前（睡眠7時間以下）、約3時間前（それより長い）。この点より<b>後</b>に浴びた光は時計を進め、<b>前</b>に浴びた光は遅らせる。帯の上の ▼ がその推定位置。</p>
+      <p>体内時計の位置は、深部体温が一番下がる時刻で表せる。目安は目覚ましなしで起きる時刻の約2時間前（睡眠7時間以下）、約3時間前（それより長い）。睡眠中に心拍が最も下がる時刻がわかれば、それを使う。この点より<b>後</b>に浴びた光は時計を進め、<b>前</b>に浴びた光は遅らせる。帯の上の ▼ がその位置。</p>
     </section>
     <section>
-      <h3>光・食事・運動・体温</h3>
+      <h3>光</h3>
       <ul>
-        <li>光が最も強い。脳の時計は光で合う。外に出られない時刻は光療法グラスで代用。</li>
-        <li>内臓の時計は食事で合う。機内食は控え、到着地の朝食を最初の食事に。</li>
-        <li>運動は身体時刻の朝と昼過ぎで時計を進め、夜で遅らせる。</li>
-        <li>寝る90分前の入浴で放熱が進み、寝つきが良くなる。</li>
+        <li>体内時計に効くのは朝と夜の光。昼の光はあまり時計を動かさない。</li>
+        <li>朝は外の光を30分、晴れなら15分。日陰や曇りでも室内よりずっと明るい。室内照明だけでは弱い。</li>
+        <li>夜は照明を暖色で暗めに。明るい店に15分いるだけでも時計は動く。寝室は暗く。</li>
+        <li>避ける時間帯はサングラス。外に出られない時刻は光療法の機器で代用できる。</li>
       </ul>
     </section>
     <section>
-      <h3>カフェイン・メラトニン・仮眠</h3>
+      <h3>食事・運動・体温</h3>
       <ul>
-        <li>カフェインは就寝6〜8時間前まで。ここでは8時間前で区切っている。</li>
-        <li>メラトニンは「眠るため（就寝時刻）」と「時計を動かすため（夕方・少量）」で飲む時刻が違う。日本では医薬品。</li>
-        <li>仮眠は20分まで、15時より前。</li>
+        <li>脳の時計は光で、内臓の時計は食事の時刻で合う。現地の朝食の時刻を毎日そろえる。</li>
+        <li>運動は身体時刻の朝と昼過ぎで時計を進め、夜で遅らせる。早歩きでもよい。</li>
+        <li>寝る1〜2時間前に40〜42℃の湯に10分。放熱が進んで寝つきが良くなる。</li>
+        <li>カフェインは就寝8時間前まで。仮眠は20分まで、15時より前。</li>
+        <li>メラトニンは日本では医薬品。使うなら医師に相談を。</li>
       </ul>
     </section>
   </div>
@@ -234,13 +238,15 @@ input[type=range]{padding:0;background:transparent;border:0;accent-color:var(--s
     <h3 id="refsTitle">根拠にした研究</h3>
     <ul>
       <li><b>出発前の調整</b>：3日間、睡眠を1時間ずつ前倒しし朝に高照度光を浴びると、体内時計は平均約2.1時間前進。Burgess HJ ほか. <i>J Biol Rhythms</i> 2003;18(4):318-28. doi:10.1177/0748730403253585</li>
-      <li><b>東行きが重い理由</b>：体内時計の固有周期が24時間より長く、再同調に東西の非対称が出る。Lu Z ほか. <i>Chaos</i> 2016. doi:10.1063/1.4954275</li>
-      <li><b>時差ぼけと成績</b>：メジャーリーグ46,535試合で、東行き後に成績が低下。Song A, Severini T, Allada R. <i>PNAS</i> 2017;114(6):1407-12. doi:10.1073/pnas.1608847114</li>
+      <li><b>東行きが重い理由</b>：再同調の東西の非対称を数理モデルで示した研究。Lu Z ほか. <i>Chaos</i> 2016. doi:10.1063/1.4954275</li>
+      <li><b>時差ぼけと成績</b>：メジャーリーグ46,535試合で、体のずれが2時間以上残る試合、とくに東行き後に成績が低下。Song A, Severini T, Allada R. <i>PNAS</i> 2017;114(6):1407-12. doi:10.1073/pnas.1608847114</li>
       <li><b>食事で動く時計</b>：食事を5時間遅らせると血糖リズムは約5.7時間ずれ、脳の時計の指標は動かない。Wehrens SMT ほか. <i>Curr Biol</i> 2017;27(12):1768-75. doi:10.1016/j.cub.2017.04.059</li>
       <li><b>運動の位相反応</b>：朝7時ごろと昼過ぎの運動で前進、19〜22時ごろで遅延。Youngstedt SD, Elliott JA, Kripke DF. <i>J Physiol</i> 2019;597(8):2253-68. doi:10.1113/JP276943</li>
-      <li><b>メラトニン（睡眠目的）</b>：目的地の就寝時刻の服用で時差ぼけが軽減。5mgを超えても効果は増えない。Herxheimer A, Petrie KJ. <i>Cochrane Database Syst Rev</i> 2002;(2):CD001520. doi:10.1002/14651858.CD001520</li>
-      <li><b>メラトニン（時計を動かす目的）</b>：0.5mgと3mgで位相反応曲線を比較。量より時刻が効く。Burgess HJ ほか. <i>J Clin Endocrinol Metab</i> 2010;95(7):3325-31. doi:10.1210/jc.2009-2590</li>
+      <li><b>入浴</b>：就寝1〜2時間前に40〜42.5℃で10分。Haghayegh S ほか. <i>Sleep Med Rev</i> 2019;46:124-35. doi:10.1016/j.smrv.2019.04.008</li>
+      <li><b>昼の光と夜の光</b>：8万8,905人の光センサー解析。昼が明るく夜が暗いほど死亡リスクが低い。Windred DP ほか. <i>PNAS</i> 2024;121(43):e2405924121. doi:10.1073/pnas.2405924121</li>
+      <li><b>睡眠の規則性</b>：規則性は睡眠時間より強い死亡リスクの予測因子。Windred DP ほか. <i>Sleep</i> 2024;47(1):zsad253. doi:10.1093/sleep/zsad253</li>
       <li><b>社会的時差ぼけ</b>：平日と休日の睡眠中央時刻の差。Wittmann M ほか. <i>Chronobiol Int</i> 2006;23(1-2):497-509. doi:10.1080/07420520500545979 ／ Roenneberg T ほか. <i>Curr Biol</i> 2012;22(10):939-43. doi:10.1016/j.cub.2012.03.038</li>
+      <li><b>メラトニン</b>：Herxheimer A, Petrie KJ. <i>Cochrane Database Syst Rev</i> 2002;(2):CD001520. doi:10.1002/14651858.CD001520</li>
     </ul>
   </section>
   <p class="foot">推定は一般的な生理モデルにもとづく目安。持病や服薬がある場合、交代勤務の人は医師に相談を。入力内容はこのブラウザにだけ保存される。</p>
@@ -268,6 +274,7 @@ const addDays=(d,k)=>new Date(d.getTime()+k*864e5);
 const isoD=d=>d.toISOString().slice(0,10);
 /* 体温最低点は起床の約2時間前（睡眠7時間以下）／約3時間前（それより長い） */
 const cbtOff=(B,W)=>mod(W-B)<=420?120:180;
+const cbt0=(st,B,W)=>st.hrMin?parseT(st.hrMin):W-cbtOff(B,W);
 /* 出発前の調整で実際に動く体内時計は、生活をずらした量の約7割（3日で約2.1時間） */
 const PRE_GAIN=0.7;
 const LZ=(()=>{try{return Intl.DateTimeFormat().resolvedOptions().timeZone||'Asia/Tokyo'}catch(e){return'Asia/Tokyo'}})();
@@ -281,12 +288,6 @@ function lightPlan(dir,cbt,wake,bed,awake){
   if(dir>0){if(len(seek)<60)seek=inter(lin(wake,wake+90),awake);if(len(avoid)<60)avoid=inter(lin(bed-120,bed),awake)}
   if(dir<0){if(len(seek)<60)seek=inter(lin(bed-180,bed),awake);if(len(avoid)<60)avoid=inter(lin(wake,wake+120),awake)}
   return{seek,avoid:minus(avoid,seek)};
-}
-function melaNote(dir,cbt,wake,bed){
-  const law='日本では医薬品なので、使うなら医師に相談';
-  if(dir>0){const t=cbt-630;
-    if(sdiff(t,wake)>60&&sdiff(bed,t)>=90)return `メラトニンを使う場合は${fmt(t)}ごろに少量（時計を進める目的。量より時刻が大事。${law}）`;}
-  return `メラトニンを使う場合は就寝時刻（${fmt(bed)}）に、眠る目的でのみ。日中に飲むと適応を遅らせる（${law}）`;
 }
 function makeDay(o){
   // o: tag,date,tz,dir,cbt,pb,wake,bed,blank,travel,nap,notes,meals
@@ -309,6 +310,8 @@ function makeDay(o){
     if(len(r.seekIn)>=30)extra.push(`${ivs(r.seekIn)} は外が暗い。照明を全開に（光療法ライトがあれば使う）`);
     if(len(r.seekOut)>=30&&len(r.seekIn)>=30)extra.push(`${ivs(r.seekOut)} は外に出て浴びる`);
     if(len(avDay)>=30)extra.push(`${ivs(avDay)} は外が明るい。外に出るならサングラス`);
+    const avEve=inter(minus(r.avoid,day),lin(17*60,3*60));
+    if(o.dir&&len(avEve)>=30)extra.push(`${ivs(avEve)} は照明を暖色で暗めに。コンビニなど明るい店は15分でも時計が動くので寄らない`);
     r.notes=[...(o.notes||[]),...extra];}
   const cEnd=o.bed-480;r.caff=sdiff(cEnd,o.wake)>60?fmt(cEnd)+'まで':'控える';
   r.sleepTxt=`${fmt(o.bed)} → 翌${fmt(o.nextWake??o.wake)}`;
@@ -464,7 +467,7 @@ function tzOff(zone,ms){const p={};new Intl.DateTimeFormat('en-US',{timeZone:zon
 /* ---------- engines ---------- */
 const RATE={adv:{pre:60,post:60},del:{pre:90,post:90}};
 function planIntl(st){
-  const B=parseT(st.bed),W=parseT(st.wake),CBT0=W-cbtOff(B,W);
+  const B=parseT(st.bed),W=parseT(st.wake),CBT0=cbt0(st,B,W);
   const[y,mo,da]=st.depDate.split('-').map(Number);const dm=parseT(st.depTime);
   const guess=Date.UTC(y,mo-1,da,Math.floor(dm/60),dm%60);
   const oc=city(st.origin),dc=city(st.dest);
@@ -481,13 +484,16 @@ function planIntl(st){
   const geo=raw>0?`目的地の時計は${hrs(raw)}進んでいる`:raw<0?`目的地の時計は${hrs(raw)}遅れている`:'時差なし';
 
   const opt=k=>{const T=k==='adv'?mod(delta):mod(-delta),R=RATE[k];const pre=T<=120?0:Math.min(T,P*R.pre,240),gain=Math.round(pre*PRE_GAIN/5)*5;return{k,T,pre,gain,post:Math.ceil((T-gain)/R.post),rate:R}};
-  let k=st.dir;if(k==='auto'){const a=opt('adv'),d=opt('del');k=a.post<d.post?'adv':'del'}
+  let k=st.dir;if(k==='auto'){const a=opt('adv'),d=opt('del');k=(a.post<d.post||(a.post===d.post&&a.T<d.T))?'adv':'del'}
   const o=opt(k),dir=k==='adv'?1:-1;
+  const near12=Math.min(mod(delta),mod(-delta))>=600;
+  let okDay=null;for(let d=1;d<=30;d++){const S=Math.min(o.T,o.gain+(d-1)*o.rate.post);if(o.T-S<120){okDay=addDays(arrDate,d-1);break}}
   const summary=[
     ['時差',raw?(raw>0?'+':'−')+hrs(raw):'0時間',geo],
     ['体内時計',delta?`${hrs(o.T)}${dir>0?'進める':'遅らせる'}`:'調整不要',delta?(dir>0?'早寝早起き方向':'夜更かし方向')+((dir>0)!==(delta>0)?'・逆回りで合わせる':''):''],
     ['移動前',o.pre?`生活を${hrs(o.pre)}ずらす`:'準備なし',o.pre?`${P}日間で。体内時計は約${hrs(o.gain)}動く`:(o.T<=120?'2時間以内は現地で合わせる':'準備日数0')],
     ['到着後',o.post?`約${o.post}日で同調`:'すぐ同調',`到着 ${md(arrDate)} ${fmt(arrMin)}（現地）`],
+    ['大事な予定',okDay?`${md(okDay)}以降`:'—','体のずれが2時間未満になる日から'],
   ];
   if(!delta)return{summary,lead:'時差がないので、移動による疲れ以外の調整は不要。現地でも普段の起床時刻と朝の光を守る。',groups:[]};
 
@@ -497,8 +503,7 @@ function planIntl(st){
     const notes=[];
     if(S===0)notes.push('まだずらさない。起床時刻を毎日そろえて、時計の位置を安定させておく');
     else if(Sp===0)notes.push(dir>0?`今日から前倒し。起床を${fmt(W-dir*S)}に、起きたらすぐ屋外の光`:`今日から後ろ倒し。夜の光で寝る時刻を${fmt(B-dir*S)}へ、朝はサングラス`);
-    if(i===P)notes.push('出発日の朝もこの起床時刻と光の当て方を続ける');
-    if(S&&dir>0)notes.push(melaNote(1,CBT0-S*PRE_GAIN,W-S,B-S));
+    if(i===P)notes.push('出発日の朝もこの起床時刻と光の当て方を続ける。ナッツなど持ち運べる食べ物を用意すると、現地の食事時刻を守りやすい');
     pre.push(makeDay({tag:`出発${P-i+1}日前`,date:md(addDays(depDate,-(P-i+1))),iso:isoD(addDays(depDate,-(P-i+1))),zone:oc.zone,city:oc,tz:oName+'時刻',dir:S?dir:0,cbt:CBT0-dir*S*PRE_GAIN,pb:B-dir*Sp,wake:W-dir*S,bed:B-dir*S,notes}));
   }
   if(pre.length)groups.push({title:`移動前（${oName}の時刻）`,days:pre});
@@ -511,9 +516,9 @@ function planIntl(st){
   fNotes.push(len(fSleep)?`機内で寝るのは ${ivs(fSleep)}（目的地の夜）。アイマスクと耳栓`:'目的地は昼の時間帯。機内ではなるべく起きておく');
   if(len(lp.avoid))fNotes.push(`${ivs(lp.avoid)} は窓を閉めて画面も暗く`);
   if(len(lp.seek))fNotes.push(`${ivs(lp.seek)} は起きて明るく過ごす`);
-  fNotes.push('機内食は原則控えて水分をとる。内臓の時計は食事で合うので、到着地の朝食を最初の食事にする'+(mealsIn.length?`（どうしても食べるなら ${mealsIn.map(m=>fmt(m.t)).join('・')} に軽く）`:''));
+  fNotes.push('機内では目的地の時刻で食べる。'+(mealsIn.length?`${mealsIn.map(m=>fmt(m.t)).join('・')} ごろの機内食はとり、`:'')+'それ以外の時間帯は軽めにして水分を多めに。内臓の時計は食事で合う');
   fNotes.push('乗ったら時計を目的地時刻に。酒は控えて水を多めに');
-  const fDay={tag:'機内',date:`出発 ${md(depDate)} ${fmt(dm)}`,tz:dName+'時刻',sleep:fSleep,nap:[],seek:lp.seek,avoid:lp.avoid,meals:[],ex:[],travel:minus(fl,fSleep),blank:minus([[0,M]],fl),cbt:cbtF,notes:fNotes,flight:true};
+  const fDay={tag:'機内',date:`出発 ${md(depDate)} ${fmt(dm)}`,tz:dName+'時刻',sleep:fSleep,nap:[],seek:lp.seek,avoid:lp.avoid,meals:mealsIn.map(m=>({t:mod(m.t),n:m.n})),ex:[],travel:minus(fl,fSleep),blank:minus([[0,M]],fl),cbt:cbtF,notes:fNotes,flight:true};
   groups.push({title:`移動中（${dName}の時刻）`,days:[fDay]});
 
   const post=[];
@@ -522,12 +527,13 @@ function planIntl(st){
     const notes=[];let nap=[],blank=null,travel=null;
     if(d===1){blank=[[0,arrMin]];travel=[[Math.max(0,arrMin-dur),arrMin]];notes.push(`${fmt(arrMin)} 到着。ここから現地の時刻で食べて寝る`)}
     if(R>=180){nap=lin(W+360,W+380);notes.push('日中に眠ければ13時台に20分だけ仮眠。夕方以降は寝ない')}
+    if(R>=120)notes.push({w:1,t:'体のずれが2時間以上残る日。大事な交渉・発表・運転はできれば避ける'});
     if(R>0)notes.push(`体はまだ${hrs(R)}${dir>0?'遅れて':'先に'}いる（体温最低点 ${fmt(CBT0+dir*R)}）`);
     else notes.push('同調完了。以後は普段どおりの起床と朝の光で維持');
     if(R>0&&d===1)notes.push(dir>0?'寝付けなくても目的地の時刻に横になって暗くする':'夕方の眠気は外を歩いてやり過ごす');
-    if(d===(mod(arrMin)<W+30?1:2))notes.push(`早く目が覚めても、${fmt(W+30)}の朝食まで何も食べずコーヒーも待つ。空腹でなくても少量食べる`);
-    if(R>0)notes.push(`寝る90分前（${fmt(B-90)}）に湯船。なければ熱めのシャワーを10分`);
-    if(R>0&&d<=3)notes.push(melaNote(dir,CBT0+dir*R,W,B));
+    if(d===(mod(arrMin)<W+30?1:2))notes.push(`早く目が覚めても間食は控え、${fmt(W+30)}の朝食を待つ。コーヒーも朝食と一緒に。空腹でなくても少し食べる`);
+    if(R>0)notes.push(`寝る1〜2時間前（${fmt(B-90)}ごろ）に40〜42℃の湯に10分。湯船がなければ熱めのシャワーを10分`);
+
     const r=makeDay({tag:R>0?(d===1?'到着日':`到着${d}日目`):'同調',date:md(addDays(arrDate,d-1)),iso:isoD(addDays(arrDate,d-1)),zone:dc.zone,city:dc,tz:dName+'時刻',dir:dd,cbt:CBT0+dir*R,pb:B,wake:W,bed:B,nap,notes,blank:blank||undefined});
     if(travel){r.travel=travel;r.arr=arrMin;
       /* 朝（朝食時刻〜昼食の1時間前）に着いたら、到着直後に朝食を少量。内臓の時計を現地の朝に合わせる */
@@ -535,14 +541,15 @@ function planIntl(st){
     post.push(r);
   }
   groups.push({title:`到着後（${dName}の時刻）`,days:post});
-  const lead=dir>0
+  const warn12=near12?'時差が10〜14時間なので、時計を進める力と遅らせる力がぶつかり、逆向きに合ってしまいやすい。光を浴びる・避ける時間帯を特に守る。':'';
+  const lead=warn12+(dir>0
     ?`体内時計を前へ${hrs(o.T)}動かす。鍵は「朝の光を浴び、夜の光を避ける」こと。ただし体温最低点より前の光は逆効果になるので、到着直後は午前中の光を避け、昼〜午後に浴びる。`
-    :`体内時計を後ろへ${hrs(o.T)}動かす。鍵は「夕方〜夜の光を浴び、早朝の光を避ける」こと。到着後しばらくは朝の強い光を避け、午後から夕方にかけて外に出る。`;
+    :`体内時計を後ろへ${hrs(o.T)}動かす。鍵は「夕方〜夜の光を浴び、早朝の光を避ける」こと。到着後しばらくは朝の強い光を避け、午後から夕方にかけて外に出る。`);
   return{summary,lead,groups};
 }
 
 function planEarly(st){
-  const B=parseT(st.bed),W=parseT(st.wake),CBT0=W-cbtOff(B,W),Wn=parseT(st.eWake);
+  const B=parseT(st.bed),W=parseT(st.wake),CBT0=cbt0(st,B,W),Wn=parseT(st.eWake);
   const home=city(st.origin);const A=sdiff(W,Wn);const P=+st.ePrep;
   const[y,mo,da]=st.eDate.split('-').map(Number);const day=new Date(Date.UTC(y,mo-1,da));
   if(A<=0)return{summary:[['前倒し','不要','普段より早くない']],lead:'普段の起床より早くないので、調整は不要。',groups:[]};
@@ -568,7 +575,7 @@ function planEarly(st){
 }
 
 function planWeekend(st){
-  const B=parseT(st.bed),W=parseT(st.wake),eB=parseT(st.weBed),eW=parseT(st.weWake),CBT0=W-cbtOff(B,W);
+  const B=parseT(st.bed),W=parseT(st.wake),eB=parseT(st.weBed),eW=parseT(st.weWake),CBT0=cbt0(st,B,W);
   const mid=(b,w)=>mod(b+mod(w-b)/2);
   const sjl=sdiff(mid(eB,eW),mid(B,W));
   const dB=sdiff(eB,B),dW=sdiff(eW,W),lim=x=>Math.max(0,Math.min(x,60));
@@ -581,7 +588,7 @@ function planWeekend(st){
   const mk=(o,cur)=>{const d=addDays(fri,wi++);return{...makeDay({...o,date:md(d),iso:isoD(d),zone:home.zone,city:home}),cur:sleepSegs(cur.pb,cur.w,cur.b)}};
   const days=[
     mk({tag:'金曜',date:'',tz:'',dir:0,cbt:CBT0,pb:B,wake:W,bed:pB,notes:[`夜更かしは${fmt(pB)}まで。夜の画面は暗めに`,'寝不足なら、遅く起きるのではなく早く寝て取り戻す']},{pb:B,w:W,b:eB}),
-    mk({tag:'土曜',date:'',tz:'',dir:0,cbt:CBT0+lim(dW),pb:pB,wake:pWs,bed:pB,notes:[`起床は${fmt(pWs)}まで（平日+1時間が上限）`,'起きて30分以内に外で20〜30分の光','起床時刻が週末の杭。足りない睡眠は寝る時刻を早めて取る','朝食を起床1時間以内に。朝食の時刻も平日から大きく動かさない'],},{pb:eB,w:eW,b:eB}),
+    mk({tag:'土曜',date:'',tz:'',dir:0,cbt:CBT0+lim(dW),pb:pB,wake:pWs,bed:pB,notes:[`起床は${fmt(pWs)}まで（平日+1時間が上限）`,'起きて30分以内に外へ。普通の日差しで30分、晴れなら15分','起床時刻が週末の杭。足りない睡眠は寝る時刻を早めて取る','朝食を起床1時間以内に。朝食の時刻も平日から大きく動かさない'],},{pb:eB,w:eW,b:eB}),
     mk({tag:'日曜',date:'',tz:'',dir:1,cbt:CBT0+lim(dW),pb:pB,wake:pWsun,bed:B,notes:[`起床${fmt(pWsun)}。朝の光でここから月曜へ戻し始める`,'昼寝は15時前に20分まで',`${fmt(B-120)}以降は照明を落とし、${fmt(B)}に寝る`]},{pb:eB,w:eW,b:eB}),
     mk({tag:'月曜',date:'',tz:'',dir:0,cbt:CBT0,pb:B,wake:W,bed:B,notes:['起きて30分以内に外の光。通勤は日の当たる側を歩く','朝食を抜かない。カフェインは午前中に寄せる']},{pb:eB,w:W,b:B}),
   ];
@@ -731,7 +738,7 @@ async function calAdd(){
 
 /* ---------- state ---------- */
 const $=id=>document.getElementById(id);
-const FIELDS=['bed','wake','origin','dest','depDate','depTime','flightH','prep','eDate','eWake','ePrep','weBed','weWake'];
+const FIELDS=['hrMin','bed','wake','origin','dest','depDate','depTime','flightH','prep','eDate','eWake','ePrep','weBed','weWake'];
 let mode='intl',dirSel='auto';
 function read(){const s={mode,dir:dirSel};FIELDS.forEach(k=>s[k]=$(k).value);return s}
 function save(s){try{localStorage.setItem('jisa-hodoki',JSON.stringify(s))}catch(e){}}
