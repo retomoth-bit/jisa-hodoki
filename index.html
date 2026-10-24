@@ -53,6 +53,20 @@ input[type=range]{padding:0;background:transparent;border:0;accent-color:var(--s
 .rangeval{font-family:var(--f-mono);color:var(--ink)}
 .seg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;background:var(--track);padding:4px;border-radius:8px}
 .hint{font-size:12px;color:var(--muted);margin:0}
+.legs{display:grid;gap:12px}
+.leg{display:grid;gap:8px;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+.leghead{display:flex;align-items:center;gap:8px;font-size:13px}
+.leghead .from{color:var(--muted);flex:1;min-width:0}
+.leghead .x{font:inherit;border:0;background:transparent;color:var(--muted);font-size:16px;line-height:1;cursor:pointer;padding:2px 6px;border-radius:4px}
+.legbtns{display:flex;flex-wrap:wrap;gap:6px}
+.ghost{font:inherit;font-size:13px;color:var(--ink);background:transparent;border:1px dashed var(--line);border-radius:6px;padding:7px 10px;cursor:pointer}
+.ghost:disabled{opacity:.4;cursor:default}
+.itin{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+.itin table{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+.itin th,.itin td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+.itin th{font-size:11px;letter-spacing:.08em;color:var(--muted);font-weight:700}
+.itin tr:last-child td{border-bottom:0}
+.itin tr.warn td:nth-child(5){color:var(--warn);font-weight:700}
 .cal{border-top:1px solid var(--line);padding-top:16px}
 .calbtn{font:inherit;font-weight:700;font-size:14px;color:var(--bg);background:var(--ink);border:0;border-radius:8px;padding:11px 14px;cursor:pointer}
 .calbtn:disabled{opacity:.5;cursor:default}
@@ -158,25 +172,14 @@ input[type=range]{padding:0;background:transparent;border:0;accent-color:var(--s
       </fieldset>
 
       <fieldset data-for="intl">
-        <legend>移動</legend>
-        <div class="row2">
-          <label>目的地<select id="dest"></select></label>
-          <label>移動時間（乗継込み）<input type="number" id="flightH" value="14.5" min="1" max="40" step="0.5" aria-label="移動時間（時間）"></label>
+        <legend>旅程</legend>
+        <div id="legs" class="legs"></div>
+        <div class="legbtns">
+          <button type="button" id="addLeg" class="ghost">＋ 次の移動</button>
+          <button type="button" id="addReturn" class="ghost">＋ 帰りの便</button>
         </div>
-        <div class="row2">
-          <label>出発日（現地）<input type="date" id="depDate" value="2026-11-04"></label>
-          <label>出発時刻（現地）<input type="time" id="depTime" value="10:30" step="300"></label>
-        </div>
-        <label>移動前の準備日数 <span class="rangeval" id="prepVal">3日</span><input type="range" id="prep" min="0" max="7" value="3"></label>
-        <div>
-          <label style="margin-bottom:4px">体内時計の合わせ方</label>
-          <div class="seg" role="group" aria-label="合わせ方" id="dirSeg">
-            <button type="button" data-dir="auto" aria-pressed="true">自動</button>
-            <button type="button" data-dir="adv" aria-pressed="false">進める</button>
-            <button type="button" data-dir="del" aria-pressed="false">遅らせる</button>
-          </div>
-        </div>
-        <p class="hint">自動は「早く同調する方」を選ぶ。体内時計は遅らせる方が楽なので、東へ9時間以上なら逆回りで遅らせる方が早いことが多い。</p>
+        <label>最初の移動の準備日数 <span class="rangeval" id="prepVal">3日</span><input type="range" id="prep" min="0" max="7" value="3"></label>
+        <p class="hint">A→B→C→A のように何区間でも入れられる。体内時計は区間ごとにリセットせず、旅程全体を通して計算する。時計を進めるか遅らせるかは、早く合う方を自動で選ぶ。</p>
       </fieldset>
 
       <fieldset data-for="early" hidden>
@@ -466,86 +469,130 @@ function tzOff(zone,ms){const p={};new Intl.DateTimeFormat('en-US',{timeZone:zon
 
 /* ---------- engines ---------- */
 const RATE={adv:{pre:60,post:60},del:{pre:90,post:90}};
+/* ---- 旅程（A→B→C…）：体内時計を区間ごとにリセットせず、全体を通して追いかける ---- */
+function legTimes(from,to,date,time,hours){
+  const fc=city(from),tc=city(to);
+  const[y,mo,da]=date.split('-').map(Number);const dm=parseT(time);
+  const guess=Date.UTC(y,mo-1,da,Math.floor(dm/60),dm%60);
+  let utc=guess-tzOff(fc.zone,guess)*6e4;utc=guess-tzOff(fc.zone,utc)*6e4;
+  const dur=Math.round((+hours||0)*60),arrUtc=utc+dur*6e4;
+  const offO=tzOff(fc.zone,utc),offD=tzOff(tc.zone,arrUtc);
+  const aL=new Date(arrUtc+offD*6e4);
+  return{fc,tc,depUtc:utc,arrUtc,dur,offO,offD,depMin:dm,depDate:new Date(Date.UTC(y,mo-1,da)),
+    arrMin:aL.getUTCHours()*60+aL.getUTCMinutes(),arrDate:new Date(Date.UTC(aL.getUTCFullYear(),aL.getUTCMonth(),aL.getUTCDate()))};
+}
+const dayIdx=d=>Math.round(d.getTime()/864e5);
+function optFor(gap,k,P){const T=k==='adv'?mod(gap):mod(-gap),R=RATE[k];const pre=P&&T>120?Math.min(T,P*R.pre,240):0,gain=Math.round(pre*PRE_GAIN/5)*5;return{k,T,pre,gain,post:Math.ceil((T-gain)/R.post),rate:R}}
+function choose(gap,P){const a=optFor(gap,'adv',P),d=optFor(gap,'del',P);return(a.post<d.post||(a.post===d.post&&a.T<=d.T))?a:d}
+const resid=(Lz,Bz,dir)=>{const g=mod(Lz-Bz);return g===0?0:(dir>0?g:M-g)};
+
 function planIntl(st){
   const B=parseT(st.bed),W=parseT(st.wake),CBT0=cbt0(st,B,W);
-  const[y,mo,da]=st.depDate.split('-').map(Number);const dm=parseT(st.depTime);
-  const guess=Date.UTC(y,mo-1,da,Math.floor(dm/60),dm%60);
-  const oc=city(st.origin),dc=city(st.dest);
-  let utc=guess-tzOff(oc.zone,guess)*6e4;utc=guess-tzOff(oc.zone,utc)*6e4;
-  const dur=Math.round((+st.flightH||0)*60),arrUtc=utc+dur*6e4;
-  const offO=tzOff(oc.zone,utc),offD=tzOff(dc.zone,arrUtc);
-  const delta=sdiff(offD-offO,0);
-  const arrL=new Date(arrUtc+offD*6e4);const arrMin=arrL.getUTCHours()*60+arrL.getUTCMinutes();
-  const arrDate=new Date(Date.UTC(arrL.getUTCFullYear(),arrL.getUTCMonth(),arrL.getUTCDate()));
-  const depDate=new Date(Date.UTC(y,mo-1,da));
-  const P=+st.prep;
-  const oName=oc.name,dName=dc.name;
-  const raw=offD-offO;
-  const geo=raw>0?`目的地の時計は${hrs(raw)}進んでいる`:raw<0?`目的地の時計は${hrs(raw)}遅れている`:'時差なし';
+  const home=city(st.origin);
+  const legs=(st.legs||[]).filter(l=>l.to&&l.date&&l.time&&+l.hours>0);
+  if(!legs.length)return{summary:[],lead:'移動を1つ以上入れてください。',groups:[]};
+  const L=[];let from=home.name;
+  for(const l of legs){L.push(legTimes(from,l.to,l.date,l.time,l.hours));from=l.to}
+  for(let i=1;i<L.length;i++)if(L[i].depUtc<=L[i-1].arrUtc)throw new Error(`移動${i+1}の出発が、移動${i}の到着より前になっています`);
+  const P=+st.prep,groups=[],stops=[];
+  let Bz=L[0].offO;                      // 体が合っているタイムゾーン（UTCからの分）
+  const o0=choose(sdiff(L[0].offD-Bz,0),P);let dir=o0.k==='adv'?1:-1;
 
-  const opt=k=>{const T=k==='adv'?mod(delta):mod(-delta),R=RATE[k];const pre=T<=120?0:Math.min(T,P*R.pre,240),gain=Math.round(pre*PRE_GAIN/5)*5;return{k,T,pre,gain,post:Math.ceil((T-gain)/R.post),rate:R}};
-  let k=st.dir;if(k==='auto'){const a=opt('adv'),d=opt('del');k=(a.post<d.post||(a.post===d.post&&a.T<d.T))?'adv':'del'}
-  const o=opt(k),dir=k==='adv'?1:-1;
-  const near12=Math.min(mod(delta),mod(-delta))>=600;
-  let okDay=null;for(let d=1;d<=30;d++){const S=Math.min(o.T,o.gain+(d-1)*o.rate.post);if(o.T-S<120){okDay=addDays(arrDate,d-1);break}}
-  const summary=[
-    ['時差',raw?(raw>0?'+':'−')+hrs(raw):'0時間',geo],
-    ['体内時計',delta?`${hrs(o.T)}${dir>0?'進める':'遅らせる'}`:'調整不要',delta?(dir>0?'早寝早起き方向':'夜更かし方向')+((dir>0)!==(delta>0)?'・逆回りで合わせる':''):''],
-    ['移動前',o.pre?`生活を${hrs(o.pre)}ずらす`:'準備なし',o.pre?`${P}日間で。体内時計は約${hrs(o.gain)}動く`:(o.T<=120?'2時間以内は現地で合わせる':'準備日数0')],
-    ['到着後',o.post?`約${o.post}日で同調`:'すぐ同調',`到着 ${md(arrDate)} ${fmt(arrMin)}（現地）`],
-    ['大事な予定',okDay?`${md(okDay)}以降`:'—','体のずれが2時間未満になる日から'],
-  ];
-  if(!delta)return{summary,lead:'時差がないので、移動による疲れ以外の調整は不要。現地でも普段の起床時刻と朝の光を守る。',groups:[]};
-
-  const groups=[];const pre=[];
-  for(let i=1;i<=P;i++){
-    const S=Math.max(0,o.pre-(P-i)*o.rate.pre),Sp=Math.max(0,o.pre-(P-i+1)*o.rate.pre);
+  /* 出発前 */
+  const pre=[];const t0=L[0];
+  for(let i=1;i<=P&&o0.T;i++){
+    const S=Math.max(0,o0.pre-(P-i)*o0.rate.pre),Sp=Math.max(0,o0.pre-(P-i+1)*o0.rate.pre);
     const notes=[];
     if(S===0)notes.push('まだずらさない。起床時刻を毎日そろえて、時計の位置を安定させておく');
     else if(Sp===0)notes.push(dir>0?`今日から前倒し。起床を${fmt(W-dir*S)}に、起きたらすぐ屋外の光`:`今日から後ろ倒し。夜の光で寝る時刻を${fmt(B-dir*S)}へ、朝はサングラス`);
     if(i===P)notes.push('出発日の朝もこの起床時刻と光の当て方を続ける。ナッツなど持ち運べる食べ物を用意すると、現地の食事時刻を守りやすい');
-    pre.push(makeDay({tag:`出発${P-i+1}日前`,date:md(addDays(depDate,-(P-i+1))),iso:isoD(addDays(depDate,-(P-i+1))),zone:oc.zone,city:oc,tz:oName+'時刻',dir:S?dir:0,cbt:CBT0-dir*S*PRE_GAIN,pb:B-dir*Sp,wake:W-dir*S,bed:B-dir*S,notes}));
+    const d=addDays(t0.depDate,-(P-i+1));
+    pre.push(makeDay({tag:`出発${P-i+1}日前`,date:md(d),iso:isoD(d),zone:home.zone,city:home,tz:home.name+'時刻',dir:S?dir:0,cbt:CBT0-dir*S*PRE_GAIN,pb:B-dir*Sp,wake:W-dir*S,bed:B-dir*S,notes}));
   }
-  if(pre.length)groups.push({title:`移動前（${oName}の時刻）`,days:pre});
+  if(pre.length&&pre.some(r=>r.dir))groups.push({title:`出発前（${home.name}の時刻）`,days:pre});
+  Bz+=dir*o0.gain;
 
-  // in-flight
-  const fl=lin(arrMin-dur,arrMin);const R0=o.T-o.gain;const cbtF=CBT0+dir*R0;
-  const lp=lightPlan(dir,cbtF,W,B,minus(fl,lin(B,W)));
-  const fSleep=inter(fl,lin(B,W));const mealsIn=[{t:W+30,n:'朝'},{t:W+330,n:'昼'},{t:B-210,n:'夕'}].filter(m=>fl.some(([s,e])=>mod(m.t)>=s&&mod(m.t)<e));
-  const fNotes=[];
-  fNotes.push(len(fSleep)?`機内で寝るのは ${ivs(fSleep)}（目的地の夜）。アイマスクと耳栓`:'目的地は昼の時間帯。機内ではなるべく起きておく');
-  if(len(lp.avoid))fNotes.push(`${ivs(lp.avoid)} は窓を閉めて画面も暗く`);
-  if(len(lp.seek))fNotes.push(`${ivs(lp.seek)} は起きて明るく過ごす`);
-  fNotes.push('機内では目的地の時刻で食べる。'+(mealsIn.length?`${mealsIn.map(m=>fmt(m.t)).join('・')} ごろの機内食はとり、`:'')+'それ以外の時間帯は軽めにして水分を多めに。内臓の時計は食事で合う');
-  fNotes.push('乗ったら時計を目的地時刻に。酒は控えて水を多めに');
-  const fDay={tag:'機内',date:`出発 ${md(depDate)} ${fmt(dm)}`,tz:dName+'時刻',sleep:fSleep,nap:[],seek:lp.seek,avoid:lp.avoid,meals:mealsIn.map(m=>({t:mod(m.t),n:m.n})),ex:[],travel:minus(fl,fSleep),blank:minus([[0,M]],fl),cbt:cbtF,notes:fNotes,flight:true};
-  groups.push({title:`移動中（${dName}の時刻）`,days:[fDay]});
+  const warn12=[];
+  for(let i=0;i<L.length;i++){
+    const t=L[i],Lz=t.offD,last=i===L.length-1,nxt=L[i+1],name=t.tc.name;
+    const gap=sdiff(Lz-Bz,0);
+    if(i>0){const o=choose(gap,0);dir=o.k==='adv'?1:-1}
+    if(Math.min(mod(gap),mod(-gap))>=600)warn12.push(name);
+    let R=resid(Lz,Bz,dir);const Rarr=R;const rate=RATE[dir>0?'adv':'del'].post;
+    const clockDiff=Math.abs(sdiff(t.offD-t.offO,0));
 
-  const post=[];
-  for(let d=1;d<=Math.min(o.post+1,14);d++){
-    const S=Math.min(o.T,o.gain+(d-1)*o.rate.post),R=o.T-S,dd=R>0?dir:0;
-    const notes=[];let nap=[],blank=null,travel=null;
-    if(d===1){blank=[[0,arrMin]];travel=[[Math.max(0,arrMin-dur),arrMin]];notes.push(`${fmt(arrMin)} 到着。ここから現地の時刻で食べて寝る`)}
-    if(R>=180){nap=lin(W+360,W+380);notes.push('日中に眠ければ13時台に20分だけ仮眠。夕方以降は寝ない')}
-    if(R>=120)notes.push({w:1,t:'体のずれが2時間以上残る日。大事な交渉・発表・運転はできれば避ける'});
-    if(R>0)notes.push(`体はまだ${hrs(R)}${dir>0?'遅れて':'先に'}いる（体温最低点 ${fmt(CBT0+dir*R)}）`);
-    else notes.push('同調完了。以後は普段どおりの起床と朝の光で維持');
-    if(R>0&&d===1)notes.push(dir>0?'寝付けなくても目的地の時刻に横になって暗くする':'夕方の眠気は外を歩いてやり過ごす');
-    if(d===(mod(arrMin)<W+30?1:2))notes.push(`早く目が覚めても間食は控え、${fmt(W+30)}の朝食を待つ。コーヒーも朝食と一緒に。空腹でなくても少し食べる`);
-    if(R>0)notes.push(`寝る1〜2時間前（${fmt(B-90)}ごろ）に40〜42℃の湯に10分。湯船がなければ熱めのシャワーを10分`);
+    /* 機内 */
+    const fl=lin(t.arrMin-t.dur,t.arrMin);const cbtF=CBT0+(Lz-Bz);
+    const lp=lightPlan(R>=15?dir:0,cbtF,W,B,minus(fl,lin(B,W)));
+    const fSleep=inter(fl,lin(B,W));
+    const mealsIn=[{t:W+30,n:'朝'},{t:W+330,n:'昼'},{t:B-210,n:'夕'}].filter(m=>fl.some(([s,e])=>mod(m.t)>=s&&mod(m.t)<e));
+    const fNotes=[];
+    fNotes.push(len(fSleep)?`機内で寝るのは ${ivs(fSleep)}（${name}の夜）。アイマスクと耳栓`:`${name}は昼の時間帯。機内ではなるべく起きておく`);
+    if(len(lp.avoid))fNotes.push(`${ivs(lp.avoid)} は窓を閉めて画面も暗く`);
+    if(len(lp.seek))fNotes.push(`${ivs(lp.seek)} は起きて明るく過ごす`);
+    fNotes.push(`機内では${name}の時刻で食べる。`+(mealsIn.length?`${mealsIn.map(m=>fmt(m.t)).join('・')} ごろの機内食はとり、`:'')+'それ以外の時間帯は軽めにして水分を多めに');
+    fNotes.push(`乗ったら時計を${name}の時刻に。酒は控えて水を多めに`);
+    groups.push({title:`移動${L.length>1?i+1:''}　${t.fc.name} → ${name}（${name}の時刻）`,days:[{tag:'機内',date:`出発 ${md(t.depDate)} ${fmt(t.depMin)}`,tz:t.fc.name+'時刻',sleep:fSleep,nap:[],seek:lp.seek,avoid:lp.avoid,meals:mealsIn.map(m=>({t:mod(m.t),n:m.n})),ex:[],travel:minus(fl,fSleep),blank:minus([[0,M]],fl),cbt:cbtF,notes:fNotes,flight:true}]});
 
-    const r=makeDay({tag:R>0?(d===1?'到着日':`到着${d}日目`):'同調',date:md(addDays(arrDate,d-1)),iso:isoD(addDays(arrDate,d-1)),zone:dc.zone,city:dc,tz:dName+'時刻',dir:dd,cbt:CBT0+dir*R,pb:B,wake:W,bed:B,nap,notes,blank:blank||undefined});
-    if(travel){r.travel=travel;r.arr=arrMin;
-      /* 朝（朝食時刻〜昼食の1時間前）に着いたら、到着直後に朝食を少量。内臓の時計を現地の朝に合わせる */
-      if(arrMin>=W && arrMin<W+270 && R>0){r.meals=[{t:mod(arrMin+30),n:'朝'},...r.meals.filter(m=>m.t>arrMin+30)];r.notes.splice(1,0,`着いたら${fmt(arrMin+30)}ごろに、空腹でなくても朝食を少量。コーヒーもここで`)}}
-    post.push(r);
+    /* 滞在 */
+    const stay=last?null:dayIdx(nxt.depDate)-dayIdx(t.arrDate);
+    const morningArr=t.arrMin>=W&&t.arrMin<W+270;
+    const rows=[];let okDay=null,Rdep=null,syncedShown=false,days=0;
+    const maxK=last?14:stay;
+    for(let k=0;k<=maxK;k++){
+      if(k>0){const step=Math.min(rate,R);R-=step;Bz+=dir*step}
+      const date=addDays(t.arrDate,k),isArr=k===0,isDep=!last&&k===stay;
+      if(okDay===null&&R<120)okDay=date;
+      if(isDep)Rdep=R;
+      const synced=R<15;
+      if(!last&&synced&&!isArr&&!isDep){if(syncedShown)continue;syncedShown=true}
+      const cbt=CBT0+(Lz-Bz),dd=synced?0:dir;
+      const notes=[];let nap=[];const blank=[];
+      if(isArr){blank.push([0,t.arrMin]);notes.push(`${fmt(t.arrMin)} ${name}に到着。ここから現地の時刻で食べて寝る`);
+        if(i>0&&Rarr>clockDiff+60)notes.push({w:1,t:`前の土地のずれが残ったまま到着。${t.fc.name}との時差は${hrs(clockDiff)}だが、体は${hrs(Rarr)}ずれている`});
+        else if(i>0&&Rarr+60<clockDiff)notes.push(`${t.fc.name}に合わせきらなかった分、${name}とのずれは${hrs(Rarr)}で済む`);
+        if(!last&&stay<=2&&Rarr>=180){const bd=inter(lin(W+180+(Lz-Bz),W+660+(Lz-Bz)),lin(W,B));
+          notes.push(len(bd)>=60?`滞在${stay}泊では合わせきれない。体の昼にあたる ${ivs(bd)} に大事な予定を寄せる`:`滞在${stay}泊では合わせきれない。体の昼が現地の夜にあたるので、大事な予定は動かせるなら別の日に`)}
+      }
+      if(isDep)blank.push([nxt.depMin,M]);
+      if(!synced&&R>=180){nap=lin(W+360,W+380);notes.push('日中に眠ければ13時台に20分だけ仮眠。夕方以降は寝ない')}
+      if(R>=120)notes.push({w:1,t:'体のずれが2時間以上残る日。大事な交渉・発表・運転はできれば避ける'});
+      if(!synced)notes.push(`体はまだ${hrs(R)}${dir>0?'遅れて':'先に'}いる（体温最低点 ${fmt(cbt)}）`);
+      else if(!isDep)notes.push(last?'同調完了。以後は普段どおりの起床と朝の光で維持':`${name}に同調。出発まで起床時刻と朝の光をそろえておく`);
+      if(isArr&&!synced)notes.push(dir>0?`寝付けなくても${name}の時刻に横になって暗くする`:'夕方の眠気は外を歩いてやり過ごす');
+      if(k===(morningArr?-1:1)&&!synced)notes.push(`早く目が覚めても間食は控え、${fmt(W+30)}の朝食を待つ。コーヒーも朝食と一緒に。空腹でなくても少し食べる`);
+      if(!synced&&!isDep)notes.push(`寝る1〜2時間前（${fmt(B-90)}ごろ）に40〜42℃の湯に10分。湯船がなければ熱めのシャワーを10分`);
+      if(isDep){notes.push(`${fmt(nxt.depMin)} 出発（${nxt.tc.name}へ）`);
+        if(R>=120)notes.push({w:1,t:`体のずれが${hrs(R)}残ったまま次の移動。このずれは次の土地に持ち越される`});}
+      const tag=isArr?'到着日':isDep?'出発日':synced?'同調':`${k+1}日目`;
+      const r=makeDay({tag,date:md(date),iso:isoD(date),zone:t.tc.zone,city:t.tc,tz:name+'時刻',dir:dd,cbt,pb:B,wake:W,bed:B,nap,notes,blank:blank.length?blank:undefined});
+      if(isArr){r.travel=[[Math.max(0,t.arrMin-t.dur),t.arrMin]];r.arr=t.arrMin;
+        if(morningArr&&!synced){r.meals=[{t:mod(t.arrMin+30),n:'朝'},...r.meals.filter(m=>m.t>t.arrMin+30)];r.notes.splice(1,0,`着いたら${fmt(t.arrMin+30)}ごろに、空腹でなくても朝食を少量。コーヒーもここで`)}}
+      if(isDep){r.travel=[...(r.travel||[]),[nxt.depMin,M]];r.dep=nxt.depMin}
+      rows.push(r);days=k;
+      if(last&&synced)break;
+    }
+    groups.push({title:last&&t.tc.name===home.name?`${name}に帰着（${name}の時刻）`:`${name}（${name}の時刻）`,days:rows});
+    stops.push({name,arr:`${md(t.arrDate)} ${fmt(t.arrMin)}`,adj:Rarr>=15?`${hrs(Rarr)}${dir>0?'進める':'遅らせる'}`:'ほぼ不要',
+      stay:last?'—':`${stay}泊`,out:last?(R<15?`約${days}日で同調`:'14日では合わない'):(Rdep>=120?`${hrs(Rdep)}残る`:Rdep>=15?`${hrs(Rdep)}残る`:'合って出発'),
+      warn:!last&&Rdep>=120,ok:okDay?`${md(okDay)}〜`:'滞在中は無理'});
   }
-  groups.push({title:`到着後（${dName}の時刻）`,days:post});
-  const warn12=near12?'時差が10〜14時間なので、時計を進める力と遅らせる力がぶつかり、逆向きに合ってしまいやすい。光を浴びる・避ける時間帯を特に守る。':'';
-  const lead=warn12+(dir>0
-    ?`体内時計を前へ${hrs(o.T)}動かす。鍵は「朝の光を浴び、夜の光を避ける」こと。ただし体温最低点より前の光は逆効果になるので、到着直後は午前中の光を避け、昼〜午後に浴びる。`
-    :`体内時計を後ろへ${hrs(o.T)}動かす。鍵は「夕方〜夜の光を浴び、早朝の光を避ける」こと。到着後しばらくは朝の強い光を避け、午後から夕方にかけて外に出る。`);
-  return{summary,lead,groups};
+  const lastStop=stops[stops.length-1];
+  const route=[home.name,...L.map(t=>t.tc.name)].join(' → ');
+  const summary=[
+    ['旅程',`${L.length}区間`,route],
+    ['出発前',o0.pre?`生活を${hrs(o0.pre)}ずらす`:'準備なし',o0.pre?`${P}日間で。体内時計は約${hrs(o0.gain)}動く`:(o0.T<=120?'2時間以内は現地で合わせる':'準備日数0')],
+    ['最初の調整',stops[0].adj,`${L[0].tc.name}・大事な予定は${stops[0].ok}`],
+    [L.length>1?'最後の到着後':'到着後',lastStop.out,`${lastStop.name} ${lastStop.arr} 着`],
+  ];
+  const carry=stops.filter(s=>s.warn).map(s=>s.name);
+  let lead=dir&&o0.T?(o0.k==='adv'
+    ?`最初の${L[0].tc.name}では体内時計を前へ動かす。鍵は「朝の光を浴び、夜の光を避ける」こと。体温最低点より前の光は逆効果なので、到着直後は午前中の光を避ける。`
+    :`最初の${L[0].tc.name}では体内時計を後ろへ動かす。鍵は「夕方〜夜の光を浴び、早朝の光を避ける」こと。到着後しばらくは朝の強い光を避ける。`):'';
+  if(L.length>1)lead+='旅程全体を通して体内時計を追いかけている。前の土地で合いきらないうちに次へ移ると、そのずれも次に持ち越す。';
+  if(carry.length)lead+=`${carry.join('・')}ではずれが2時間以上残ったまま次へ移る。`;
+  if(warn12.length)lead=`${warn12.join('・')}は時差が10〜14時間にあたり、時計を進める力と遅らせる力がぶつかって逆向きに合いやすい。光を浴びる・避ける時間帯を特に守る。`+lead;
+  return{summary,lead,groups,stops:L.length>1?stops:null};
 }
 
 function planEarly(st){
@@ -610,6 +657,7 @@ function track(r,cls=''){
   let h=`<div class="track ${cls}">`+seg(r.avoid,'av')+seg(r.seek,'sun')+seg(r.sleep,'sl')+seg(r.nap,'nap')+seg(r.travel,'tr')+(r.flight?seg(r.blank,'bl'):'');
   if(r.cbt!=null&&!cls)h+=`<u class="cbt" style="left:${(mod(r.cbt)/M*100).toFixed(3)}%" title="体温最低点 ${fmt(r.cbt)}"></u>`;
   if(r.arr!=null)h+=`<u class="arr" style="left:${(r.arr/M*100).toFixed(3)}%"></u>`;
+  if(r.dep!=null)h+=`<u class="arr" style="left:${(r.dep/M*100).toFixed(3)}%"></u>`;
   return h+'</div>';
 }
 function lane(meals){return`<div class="lane">${meals.map(m=>`<b style="left:${(m.t/M*100).toFixed(3)}%">${m.n}</b>`).join('')}</div>`}
@@ -630,7 +678,7 @@ function render(){
   const st=read();save(st);
   document.querySelectorAll('[data-for]').forEach(f=>f.hidden=f.dataset.for!==st.mode);
   document.querySelectorAll('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.mode===st.mode));
-  document.querySelectorAll('[data-dir]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.dir===st.dir));
+  syncLegFrom();
   document.getElementById('habitLegend').textContent=st.mode==='weekend'?'平日の睡眠':'普段の睡眠';
   document.getElementById('prepVal').textContent=st.prep+'日';
   document.getElementById('ePrepVal').textContent=st.ePrep+'日';
@@ -639,6 +687,7 @@ function render(){
   const ticks=[0,3,6,9,12,15,18,21,24].map(h=>`<span style="left:${h/24*100}%">${h}</span>`).join('');
   document.getElementById('out').innerHTML=`
    <div class="summary">${p.summary.map(([a,b,c])=>`<div><small>${a}</small><strong>${b}</strong><span>${c||''}</span></div>`).join('')}</div>
+   ${p.stops?`<div class="itin"><table><thead><tr><th>滞在地</th><th>到着（現地）</th><th>必要な調整</th><th>滞在</th><th>出発時／その後</th><th>大事な予定</th></tr></thead><tbody>${p.stops.map(s=>`<tr${s.warn?' class="warn"':''}><td>${s.name}</td><td>${s.arr}</td><td>${s.adj}</td><td>${s.stay}</td><td>${s.out}</td><td>${s.ok}</td></tr>`).join('')}</tbody></table></div>`:''}
    <p class="lead">${p.lead}</p>
    ${p.groups.length?`<div class="legend"><span><i class="sw-sl"></i>睡眠</span><span><i class="sw-sun"></i>光を浴びる</span><span><i class="sw-av"></i>光を避ける</span><span><i class="sw-meal"></i>食事</span><span><i class="sw-cbt"></i>体温最低点（推定）</span>${st.mode==='intl'?'<span><i class="sw-tr"></i>移動中</span>':''}</div>
    <div class="sched"><div class="axis"><div class="lab"></div><div class="ticks">${ticks}</div></div>
@@ -738,17 +787,44 @@ async function calAdd(){
 
 /* ---------- state ---------- */
 const $=id=>document.getElementById(id);
-const FIELDS=['hrMin','bed','wake','origin','dest','depDate','depTime','flightH','prep','eDate','eWake','ePrep','weBed','weWake'];
-let mode='intl',dirSel='auto';
-function read(){const s={mode,dir:dirSel};FIELDS.forEach(k=>s[k]=$(k).value);return s}
+const FIELDS=['hrMin','bed','wake','origin','prep','eDate','eWake','ePrep','weBed','weWake'];
+let mode='intl';
+let legs=[{to:'パリ',date:'2026-11-04',time:'10:30',hours:14.5},{to:'東京',date:'2026-11-09',time:'19:30',hours:13.5}];
+const MAXLEGS=6;
+function read(){const s={mode,legs:legs.map(l=>({...l}))};FIELDS.forEach(k=>s[k]=$(k).value);return s}
 function save(s){try{localStorage.setItem('jisa-hodoki',JSON.stringify(s))}catch(e){}}
+let CITY_OPTS='';
+function legFrom(i){return i?legs[i-1].to:$('origin').value}
+function syncLegFrom(){document.querySelectorAll('#legs .from').forEach((el,i)=>el.textContent=legFrom(i)+' →')}
+function renderLegs(){
+  $('legs').innerHTML=legs.map((l,i)=>`<div class="leg" data-i="${i}">
+    <div class="leghead"><b>移動${i+1}</b><span class="from"></span>${legs.length>1?`<button type="button" class="x" data-del="${i}" aria-label="移動${i+1}を削除">×</button>`:''}</div>
+    <div class="row2"><label>行き先<select id="leg${i}_to" data-k="to">${CITY_OPTS}</select></label>
+    <label>移動時間（乗継込み）<input type="number" id="leg${i}_hours" data-k="hours" min="1" max="40" step="0.5"></label></div>
+    <div class="row2"><label>出発日（現地）<input type="date" id="leg${i}_date" data-k="date"></label>
+    <label>出発時刻（現地）<input type="time" id="leg${i}_time" data-k="time" step="300"></label></div></div>`).join('');
+  legs.forEach((l,i)=>['to','hours','date','time'].forEach(k=>{$(`leg${i}_${k}`).value=l[k]}));
+  syncLegFrom();
+  $('addLeg').disabled=$('addReturn').disabled=legs.length>=MAXLEGS;
+}
+function plusDays(iso,n){const d=new Date(iso+'T00:00:00Z');return isoD(addDays(d,n))}
 function init(){
-  const opts=REGIONS.map(r=>`<optgroup label="${r}">${CITIES.filter(c=>c[4]===r).map(([n])=>`<option value="${n}">${n}</option>`).join('')}</optgroup>`).join('');
-  $('origin').innerHTML=opts;$('dest').innerHTML=opts;$('origin').value='東京';$('dest').value='パリ';
-  try{const s=JSON.parse(localStorage.getItem('jisa-hodoki')||'null');if(s){FIELDS.forEach(k=>{if(s[k]!=null&&s[k]!=='')$(k).value=s[k]});mode=s.mode||mode;dirSel=s.dir||dirSel}}catch(e){}
-  if(!$('origin').value)$('origin').value='東京';if(!$('dest').value)$('dest').value='パリ';
+  CITY_OPTS=REGIONS.map(r=>`<optgroup label="${r}">${CITIES.filter(c=>c[4]===r).map(([n])=>`<option value="${n}">${n}</option>`).join('')}</optgroup>`).join('');
+  $('origin').innerHTML=CITY_OPTS;$('origin').value='東京';
+  try{const s=JSON.parse(localStorage.getItem('jisa-hodoki')||'null');if(s){FIELDS.forEach(k=>{if(s[k]!=null&&s[k]!=='')$(k).value=s[k]});mode=s.mode||mode;
+    if(Array.isArray(s.legs)&&s.legs.length)legs=s.legs.filter(l=>city(l.to).name===l.to).slice(0,MAXLEGS);
+    else if(s.dest&&s.depDate)legs=[{to:city(s.dest).name,date:s.depDate,time:s.depTime||'10:30',hours:+s.flightH||12}];
+    if(!legs.length)legs=[{to:'パリ',date:'2026-11-04',time:'10:30',hours:14.5}]}}catch(e){}
+  if(!$('origin').value)$('origin').value='東京';
+  renderLegs();
   document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{mode=b.dataset.mode;render()}));
-  document.querySelectorAll('[data-dir]').forEach(b=>b.addEventListener('click',()=>{dirSel=b.dataset.dir;render()}));
+  $('legs').addEventListener('input',e=>{const el=e.target,box=el.closest('.leg');if(!box||!el.dataset.k)return;
+    const i=+box.dataset.i;legs[i][el.dataset.k]=el.dataset.k==='hours'?+el.value:el.value;if(el.dataset.k==='to')syncLegFrom()});
+  $('legs').addEventListener('click',e=>{const b=e.target.closest('[data-del]');if(!b)return;legs.splice(+b.dataset.del,1);renderLegs();render()});
+  $('addLeg').addEventListener('click',()=>{const l=legs[legs.length-1];const to=['ロンドン','パリ','ニューヨーク'].find(n=>n!==l.to);
+    legs.push({to,date:plusDays(l.date,3),time:'10:00',hours:2});renderLegs();render()});
+  $('addReturn').addEventListener('click',()=>{const l=legs[legs.length-1];
+    legs.push({to:$('origin').value,date:plusDays(l.date,4),time:'19:00',hours:+legs[0].hours||12});renderLegs();render()});
   $('f').addEventListener('input',render);$('f').addEventListener('submit',e=>e.preventDefault());
   $('calBtn').addEventListener('click',calAdd);
   if(!IN_CLAUDE)$('calInfo').textContent='「光を浴びる」「光を避ける」「就寝」を通知付きの予定ファイル（.ics）で保存。iPhone・Googleカレンダー・Outlookに取り込める。';
