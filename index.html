@@ -682,7 +682,7 @@ function render(){
   document.getElementById('habitLegend').textContent=st.mode==='weekend'?'平日の睡眠':'普段の睡眠';
   document.getElementById('prepVal').textContent=st.prep+'日';
   document.getElementById('ePrepVal').textContent=st.ePrep+'日';
-  let p;try{p=st.mode==='intl'?planIntl(st):st.mode==='early'?planEarly(st):planWeekend(st)}catch(e){lastPlan=null;document.getElementById('out').innerHTML=`<p class="lead">入力を確認してください（${e.message}）</p>`;return}
+  let p;try{p=st.mode==='intl'?planIntl(st):st.mode==='early'?planEarly(st):planWeekend(st)}catch(e){lastPlan=null;calRefresh();document.getElementById('out').innerHTML=`<p class="lead">入力を確認してください（${e.message}）</p>`;return}
   lastPlan=p;calRefresh();
   const ticks=[0,3,6,9,12,15,18,21,24].map(h=>`<span style="left:${h/24*100}%">${h}</span>`).join('');
   document.getElementById('out').innerHTML=`
