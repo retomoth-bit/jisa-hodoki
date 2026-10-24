@@ -1,0 +1,589 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="海外移動・早朝出発・週末のずれによる時差ぼけを、光・食事・睡眠の時刻で整えるプランナー">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font-size:14px}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>時差ほどき</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Shippori+Mincho+B1:wght@600;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<style>
+/* Layout: 左に入力の操作盤、右に「1日=24時間の帯」を日ごとに積んだ時刻表。スマホでは縦一列 */
+:root{
+  --bg:#EDF0F4; --surface:#FFFFFF; --ink:#131B2A; --muted:#5A6577; --line:#D3DAE4; --track:#F3F5F8;
+  --sleep:#26376A; --sun:#E8952A; --sunink:#8A4F06; --avoid:#7F8A9D; --meal:#2E8656; --travel:#AAB4C3; --warn:#B4441F;
+  --f-display:"Shippori Mincho B1","Hiragino Mincho ProN","Yu Mincho",serif;
+  --f-body:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0C111D; --surface:#141B2B; --ink:#E6EAF1; --muted:#97A2B4; --line:#263049; --track:#1A2235;
+  --sleep:#5568B4; --sun:#F2A944; --sunink:#F6C27A; --avoid:#626C84; --meal:#5DBE85; --travel:#4A5570; --warn:#F08A64; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0C111D; --surface:#141B2B; --ink:#E6EAF1; --muted:#97A2B4; --line:#263049; --track:#1A2235;
+  --sleep:#5568B4; --sun:#F2A944; --sunink:#F6C27A; --avoid:#626C84; --meal:#5DBE85; --travel:#4A5570; --warn:#F08A64; color-scheme:dark}
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.65;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 56px}
+.page{max-width:1180px;margin:0 auto;display:grid;gap:24px}
+header{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 18px}
+h1{font-family:var(--f-display);font-weight:700;font-size:34px;letter-spacing:.06em;margin:0}
+header p{margin:0;color:var(--muted);font-size:14px}
+.main{display:grid;grid-template-columns:330px minmax(0,1fr);gap:24px;align-items:start}
+@media (max-width:860px){.main{grid-template-columns:minmax(0,1fr)}}
+
+/* controls */
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;display:grid;gap:18px;position:sticky;top:16px}
+@media (max-width:860px){.panel{position:static}}
+.modes{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;background:var(--track);padding:4px;border-radius:8px}
+.modes button,.seg button{font:inherit;font-size:13px;border:0;background:transparent;color:var(--muted);padding:8px 4px;border-radius:6px;cursor:pointer}
+.modes button[aria-pressed="true"],.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);font-weight:700;box-shadow:0 1px 2px rgba(0,0,0,.12)}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--sun);outline-offset:2px}
+fieldset{border:0;margin:0;padding:0;display:grid;gap:10px}
+legend{font-size:11px;letter-spacing:.14em;color:var(--muted);font-weight:700;padding:0;margin-bottom:8px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+label{display:grid;gap:4px;font-size:12.5px;color:var(--muted)}
+input,select{font:inherit;font-size:15px;color:var(--ink);background:var(--track);border:1px solid var(--line);border-radius:6px;padding:7px 9px;width:100%;min-width:0}
+input[type=time],input[type=number],input[type=date]{font-family:var(--f-mono);font-size:14px}
+input[type=range]{padding:0;background:transparent;border:0;accent-color:var(--sun)}
+.rangeval{font-family:var(--f-mono);color:var(--ink)}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;background:var(--track);padding:4px;border-radius:8px}
+.hint{font-size:12px;color:var(--muted);margin:0}
+.cal{border-top:1px solid var(--line);padding-top:16px}
+.calbtn{font:inherit;font-weight:700;font-size:14px;color:var(--bg);background:var(--ink);border:0;border-radius:8px;padding:11px 14px;cursor:pointer}
+.calbtn:disabled{opacity:.5;cursor:default}
+.calstatus{margin:0;font-size:12.5px;min-height:1em}
+.calstatus.err{color:var(--warn)}
+
+/* results */
+.out{display:grid;gap:20px;min-width:0}
+.summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.summary div{background:var(--surface);padding:14px 16px;display:grid;gap:2px;align-content:start}
+.summary small{font-size:11px;letter-spacing:.12em;color:var(--muted);font-weight:700}
+.summary strong{font-family:var(--f-display);font-size:22px;line-height:1.3;font-weight:700}
+.summary span{font-size:12.5px;color:var(--muted)}
+.lead{margin:0;font-size:14.5px;max-width:68ch}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12.5px;color:var(--muted)}
+.legend i{display:inline-block;width:18px;height:10px;border-radius:2px;vertical-align:-1px;margin-right:6px}
+.sw-sl{background:var(--sleep)} .sw-sun{background:var(--sun)}
+.sw-av{background:repeating-linear-gradient(135deg,var(--avoid) 0 2px,transparent 2px 5px);outline:1px solid var(--avoid);outline-offset:-1px}
+.sw-meal{width:8px!important;height:8px!important;border-radius:50%!important;background:var(--meal)}
+.sw-cbt{width:0!important;height:0!important;border-left:5px solid transparent;border-right:5px solid transparent;border-top:8px solid var(--ink);border-radius:0!important}
+.sw-tr{background:repeating-linear-gradient(90deg,var(--travel) 0 4px,transparent 4px 7px)}
+
+.sched{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 16px 4px}
+.axis,.day{display:grid;grid-template-columns:104px minmax(0,1fr);gap:4px 14px}
+@media (max-width:560px){.axis,.day{grid-template-columns:minmax(0,1fr)} .axis .lab{display:none}}
+.axis{position:sticky;top:0;background:var(--surface);padding:8px 0 4px;z-index:2;border-bottom:1px solid var(--line)}
+.ticks{position:relative;height:16px;font-family:var(--f-mono);font-size:10.5px;color:var(--muted)}
+.ticks span{position:absolute;transform:translateX(-50%)}
+.ticks span:first-child{transform:none}.ticks span:last-child{transform:translateX(-100%)}
+.phase{font-size:11px;letter-spacing:.14em;font-weight:700;color:var(--muted);padding:14px 0 2px;border-top:1px solid var(--line);margin-top:6px}
+.phase:first-of-type{border-top:0;margin-top:0}
+.day{padding:10px 0 12px;border-bottom:1px dashed var(--line)}
+.day:last-child{border-bottom:0}
+.lab{display:grid;align-content:start;gap:0}
+.lab b{font-size:14px}
+.lab span{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.lab em{font-style:normal;font-size:11px;color:var(--muted)}
+.body{min-width:0;display:grid;gap:6px}
+.track{position:relative;height:26px;background:var(--track);border-radius:4px;overflow:hidden;
+  background-image:repeating-linear-gradient(90deg,var(--line) 0 1px,transparent 1px 12.5%)}
+.track.cur{height:9px;opacity:.75}
+.track i{position:absolute;top:0;bottom:0}
+.track .sl{background:var(--sleep)}
+.track .nap{background:var(--sleep);opacity:.55;top:4px;bottom:4px}
+.track .sun{background:var(--sun)}
+.track .av{background:repeating-linear-gradient(135deg,var(--avoid) 0 2px,transparent 2px 5px)}
+.track .tr{background:repeating-linear-gradient(90deg,var(--travel) 0 4px,transparent 4px 7px);top:9px;bottom:9px}
+.track .bl{background:var(--surface);opacity:.7}
+.track .cbt{position:absolute;top:0;width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:8px solid var(--ink);transform:translateX(-5px)}
+.track .arr{position:absolute;top:0;bottom:0;width:2px;background:var(--ink)}
+.lane{position:relative;height:16px}
+.lane b{position:absolute;transform:translateX(-50%);display:flex;align-items:center;gap:3px;font-size:10.5px;color:var(--meal);font-weight:700;white-space:nowrap}
+.lane b::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--meal)}
+.curlab{font-size:10.5px;color:var(--muted);margin-bottom:-3px}
+.det{margin:0;display:flex;flex-wrap:wrap;gap:2px 14px;font-size:12.5px}
+.det span{white-space:nowrap}
+.det em{font-style:normal;color:var(--muted);margin-right:5px}
+.det .t{font-family:var(--f-mono);font-size:12px}
+.det .s .t{color:var(--sunink);font-weight:500}
+.notes{margin:0;padding-left:1.1em;font-size:12.5px;color:var(--ink);display:grid;gap:1px}
+.notes li::marker{color:var(--sun)}
+.notes .w{color:var(--warn)}
+
+.guide{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+.guide section{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+.guide h3{font-family:var(--f-display);font-size:17px;margin:0 0 6px}
+.guide p,.guide ul{margin:0;font-size:13.5px;color:var(--ink)}
+.guide ul{padding-left:1.1em}
+.foot{font-size:12px;color:var(--muted);margin:0}
+@media (prefers-reduced-motion:no-preference){.day{animation:in .35s ease both}@keyframes in{from{transform:translateY(4px)}to{transform:none}}}
+</style>
+
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1>時差ほどき</h1>
+    <p>体内時計の位置を推定して、光・食事・睡眠の時刻を日ごとに組み立てる。海外移動も、早朝出発も、週末のずれも同じ仕組みで扱う。</p>
+  </header>
+
+  <div class="main">
+    <form class="panel" id="f" autocomplete="off">
+      <div class="modes" role="group" aria-label="モード">
+        <button type="button" data-mode="intl" aria-pressed="true">海外移動</button>
+        <button type="button" data-mode="early" aria-pressed="false">早朝移動</button>
+        <button type="button" data-mode="weekend" aria-pressed="false">週末のずれ</button>
+      </div>
+
+      <fieldset>
+        <legend id="habitLegend">普段の睡眠</legend>
+        <div class="row2">
+          <label>就寝<input type="time" id="bed" value="23:30" step="900"></label>
+          <label>起床<input type="time" id="wake" value="07:00" step="900"></label>
+        </div>
+        <label>いる場所（出発地）<select id="origin"></select></label>
+      </fieldset>
+
+      <fieldset data-for="intl">
+        <legend>移動</legend>
+        <div class="row2">
+          <label>目的地<select id="dest"></select></label>
+          <label>移動時間（乗継込み）<input type="number" id="flightH" value="14.5" min="1" max="40" step="0.5" aria-label="移動時間（時間）"></label>
+        </div>
+        <div class="row2">
+          <label>出発日（現地）<input type="date" id="depDate" value="2026-11-04"></label>
+          <label>出発時刻（現地）<input type="time" id="depTime" value="10:30" step="300"></label>
+        </div>
+        <label>移動前の準備日数 <span class="rangeval" id="prepVal">3日</span><input type="range" id="prep" min="0" max="7" value="3"></label>
+        <div>
+          <label style="margin-bottom:4px">体内時計の合わせ方</label>
+          <div class="seg" role="group" aria-label="合わせ方" id="dirSeg">
+            <button type="button" data-dir="auto" aria-pressed="true">自動</button>
+            <button type="button" data-dir="adv" aria-pressed="false">進める</button>
+            <button type="button" data-dir="del" aria-pressed="false">遅らせる</button>
+          </div>
+        </div>
+        <p class="hint">自動は「早く同調する方」を選ぶ。体内時計は遅らせる方が楽なので、東へ9時間以上なら逆回りで遅らせる方が早いことが多い。</p>
+      </fieldset>
+
+      <fieldset data-for="early" hidden>
+        <legend>早朝の移動</legend>
+        <div class="row2">
+          <label>移動日<input type="date" id="eDate" value="2026-10-28"></label>
+          <label>その日の起床<input type="time" id="eWake" value="04:30" step="900"></label>
+        </div>
+        <label>前倒しの準備日数 <span class="rangeval" id="ePrepVal">2日</span><input type="range" id="ePrep" min="0" max="3" value="2"></label>
+        <p class="hint">新幹線の始発や早朝便など。前倒しは「早く寝る」より「早く起きて朝の光」の方が効く。</p>
+      </fieldset>
+
+      <fieldset data-for="weekend" hidden>
+        <legend>週末の睡眠</legend>
+        <div class="row2">
+          <label>就寝<input type="time" id="weBed" value="01:30" step="900"></label>
+          <label>起床<input type="time" id="weWake" value="09:30" step="900"></label>
+        </div>
+        <p class="hint">上の「平日の睡眠」と比べて、週末に体内時計がどれだけ西へ旅しているかを出す。</p>
+      </fieldset>
+
+      <fieldset class="cal">
+        <legend>通知</legend>
+        <button type="button" id="calBtn" class="calbtn">Googleカレンダーに登録</button>
+        <p class="hint" id="calInfo">「光を浴びる」「光を避ける」「就寝」を予定として入れる。カレンダーのリマインダーがスマホに通知される。</p>
+        <p class="calstatus" id="calStatus" role="status"></p>
+      </fieldset>
+    </form>
+
+    <div class="out" id="out"></div>
+  </div>
+
+  <div class="guide">
+    <section>
+      <h3>軸は「体温最低点」</h3>
+      <p>体内時計の位置は、深部体温が一番下がる時刻（普段の起床の約2.5時間前）で表せる。この点より<b>後</b>に浴びた光は時計を進め、<b>前</b>に浴びた光は遅らせる。帯の上の ▼ がその推定位置。</p>
+    </section>
+    <section>
+      <h3>光が主役、食事は補助</h3>
+      <ul>
+        <li>屋外の光は曇りでも室内の10倍以上。窓越しより外に出る。</li>
+        <li>避ける時間帯はサングラスか、画面を暗く。</li>
+        <li>朝食を「合わせたい朝」に固定すると、末梢の時計がついてくる。夜遅い大食は避ける。</li>
+      </ul>
+    </section>
+    <section>
+      <h3>カフェイン・酒・仮眠</h3>
+      <ul>
+        <li>カフェインは就寝8時間前まで。</li>
+        <li>機内の酒は眠りを浅くする。水を多めに。</li>
+        <li>仮眠は20分まで、15時より前。</li>
+        <li>メラトニンは日本では医薬品。使うなら医師に相談を。</li>
+      </ul>
+    </section>
+  </div>
+  <p class="foot">推定は一般的な生理モデルにもとづく目安。持病や服薬がある場合、交代勤務の人は医師に相談を。入力内容はこのブラウザにだけ保存される。</p>
+</div>
+
+<script>
+const M=1440;
+const mod=x=>((x%M)+M)%M;
+const sdiff=(a,b)=>mod(a-b+720)-720;
+const parseT=s=>{const[h,m]=(s||'0:0').split(':').map(Number);return h*60+(m||0)};
+const fmt=m=>{m=mod(Math.round(m/5)*5);return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0')};
+const hrs=m=>{const h=Math.round(Math.abs(m)/30)/2;return (h%1?h.toFixed(1):h)+'時間'};
+function lin(s,e){s=mod(s);e=mod(e);if(s===e)return[];return e>s?[[s,e]]:[[s,M],[0,e]]}
+function inter(a,b){const r=[];for(const[x1,y1]of a)for(const[x2,y2]of b){const s=Math.max(x1,x2),e=Math.min(y1,y2);if(e>s)r.push([s,e])}return r}
+function minus(a,b){let res=a.map(x=>x.slice());for(const[bs,be]of b){const n=[];for(const[s,e]of res){if(be<=s||bs>=e){n.push([s,e]);continue}if(bs>s)n.push([s,bs]);if(be<e)n.push([be,e])}res=n}return res}
+const len=l=>l.reduce((t,[s,e])=>t+e-s,0);
+function ivs(list){if(!len(list))return'';const L=list.map(x=>x.slice()).sort((a,b)=>a[0]-b[0]);
+  if(L.length>1&&L[0][0]===0&&L[L.length-1][1]===M){const last=L.pop();L[0]=[last[0],L[0][1]]}
+  return L.map(([s,e])=>fmt(s)+'–'+fmt(e)).join('、')}
+function sleepSegs(pb,w,b){const s=[];pb=mod(pb);w=mod(w);b=mod(b);
+  s.push(pb>=720?[0,w]:(pb<w?[pb,w]:[0,w]));if(b>=720)s.push([b,M]);return s.filter(([x,y])=>y>x)}
+const WD=['日','月','火','水','木','金','土'];
+const md=d=>`${d.getUTCMonth()+1}/${d.getUTCDate()}(${WD[d.getUTCDay()]})`;
+const addDays=(d,k)=>new Date(d.getTime()+k*864e5);
+const isoD=d=>d.toISOString().slice(0,10);
+const LZ=(()=>{try{return Intl.DateTimeFormat().resolvedOptions().timeZone||'Asia/Tokyo'}catch(e){return'Asia/Tokyo'}})();
+
+function lightPlan(dir,cbt,wake,bed,awake){
+  let seek,avoid;
+  if(dir>0){seek=lin(cbt,cbt+180);avoid=lin(cbt-180,cbt)}
+  else if(dir<0){seek=lin(cbt-180,cbt);avoid=lin(cbt,cbt+180)}
+  else{seek=lin(wake,wake+120);avoid=lin(bed-120,bed)}
+  seek=inter(seek,awake);avoid=inter(avoid,awake);
+  if(dir>0){if(len(seek)<60)seek=inter(lin(wake,wake+90),awake);if(len(avoid)<60)avoid=inter(lin(bed-120,bed),awake)}
+  if(dir<0){if(len(seek)<60)seek=inter(lin(bed-180,bed),awake);if(len(avoid)<60)avoid=inter(lin(wake,wake+120),awake)}
+  return{seek,avoid:minus(avoid,seek)};
+}
+function makeDay(o){
+  // o: tag,date,tz,dir,cbt,pb,wake,bed,blank,travel,nap,notes,meals
+  const sleep=lin(o.bed,o.wake);
+  let awake=minus([[0,M]],sleep);
+  const lp=lightPlan(o.dir,o.cbt,o.wake,o.bed,awake);
+  let meals=o.meals||[{t:o.wake+30,n:'朝'},{t:o.wake+330,n:'昼'},{t:Math.max(o.bed-210,o.wake+600),n:'夕'}];
+  meals=meals.map(m=>({t:mod(m.t),n:m.n}));
+  const r={...o,sleep,seek:lp.seek,avoid:lp.avoid,meals,nap:o.nap||[]};
+  if(o.blank){for(const k of['sleep','seek','avoid','nap'])r[k]=minus(r[k],o.blank);r.meals=r.meals.filter(m=>!o.blank.some(([s,e])=>m.t>=s&&m.t<e))}
+  r.seekOut=r.seek;r.seekIn=[];
+  if(o.city&&o.iso){const day=sunTimes(o.iso,o.city);
+    r.seekOut=inter(r.seek,day);r.seekIn=minus(r.seek,day);const avDay=inter(r.avoid,day);
+    if(len(r.seekIn)<30){r.seekOut=r.seek;r.seekIn=[]}else if(len(r.seekOut)<30){r.seekIn=r.seek;r.seekOut=[]}
+    const extra=[];
+    if(len(r.seekIn)>=30)extra.push(`${ivs(r.seekIn)} は外が暗い。照明を全開に（光療法ライトがあれば使う）`);
+    if(len(r.seekOut)>=30&&len(r.seekIn)>=30)extra.push(`${ivs(r.seekOut)} は外に出て浴びる`);
+    if(len(avDay)>=30)extra.push(`${ivs(avDay)} は外が明るい。外に出るならサングラス`);
+    r.notes=[...(o.notes||[]),...extra];}
+  const cEnd=o.bed-480;r.caff=sdiff(cEnd,o.wake)>60?fmt(cEnd)+'まで':'控える';
+  r.sleepTxt=`${fmt(o.bed)} → 翌${fmt(o.nextWake??o.wake)}`;
+  return r;
+}
+
+/* ---------- time zones ---------- */
+const CITIES=[["札幌","Asia/Tokyo",43.06,141.35],["仙台","Asia/Tokyo",38.27,140.87],["東京","Asia/Tokyo",35.68,139.69],["名古屋","Asia/Tokyo",35.18,136.91],["金沢","Asia/Tokyo",36.56,136.66],["大阪","Asia/Tokyo",34.69,135.50],["広島","Asia/Tokyo",34.39,132.46],["福岡","Asia/Tokyo",33.59,130.40],["那覇","Asia/Tokyo",26.21,127.68],["ソウル","Asia/Seoul",37.57,126.98],["上海","Asia/Shanghai",31.23,121.47],["北京","Asia/Shanghai",39.90,116.40],["台北","Asia/Taipei",25.03,121.57],["香港","Asia/Hong_Kong",22.32,114.17],["シンガポール","Asia/Singapore",1.35,103.82],["バンコク","Asia/Bangkok",13.76,100.50],["ホーチミン","Asia/Ho_Chi_Minh",10.82,106.63],["デリー","Asia/Kolkata",28.61,77.21],["ドバイ","Asia/Dubai",25.20,55.27],["イスタンブール","Europe/Istanbul",41.01,28.98],["ヘルシンキ","Europe/Helsinki",60.17,24.94],["パリ","Europe/Paris",48.86,2.35],["ベルリン","Europe/Berlin",52.52,13.40],["ミラノ","Europe/Rome",45.46,9.19],["マドリード","Europe/Madrid",40.42,-3.70],["ロンドン","Europe/London",51.51,-0.13],["リスボン","Europe/Lisbon",38.72,-9.14],["ニューヨーク","America/New_York",40.71,-74.01],["シカゴ","America/Chicago",41.88,-87.63],["デンバー","America/Denver",39.74,-104.99],["ロサンゼルス","America/Los_Angeles",34.05,-118.24],["サンフランシスコ","America/Los_Angeles",37.77,-122.42],["バンクーバー","America/Vancouver",49.28,-123.12],["ホノルル","Pacific/Honolulu",21.31,-157.86],["メキシコシティ","America/Mexico_City",19.43,-99.13],["サンパウロ","America/Sao_Paulo",-23.55,-46.63],["シドニー","Australia/Sydney",-33.87,151.21],["オークランド","Pacific/Auckland",-36.85,174.76]];
+const city=n=>{const c=CITIES.find(c=>c[0]===n)||CITIES.find(c=>c[0]==='東京');return{name:c[0],zone:c[1],lat:c[2],lon:c[3]}};
+/* 日の出・日の入り（NOAA近似、太陽高度 -0.833°）。返り値は現地時刻の明るい区間 */
+function sunTimes(iso,c){
+  const[y,m,d]=iso.split('-').map(Number);const noon=Date.UTC(y,m-1,d,12);
+  const N=Math.round((noon-Date.UTC(y,0,0))/864e5),g=2*Math.PI/365*(N-1);
+  const eqt=229.18*(0.000075+0.001868*Math.cos(g)-0.032077*Math.sin(g)-0.014615*Math.cos(2*g)-0.040849*Math.sin(2*g));
+  const dec=0.006918-0.399912*Math.cos(g)+0.070257*Math.sin(g)-0.006758*Math.cos(2*g)+0.000907*Math.sin(2*g)-0.002697*Math.cos(3*g)+0.00148*Math.sin(3*g);
+  const la=c.lat*Math.PI/180;
+  const cosH=Math.cos(90.833*Math.PI/180)/(Math.cos(la)*Math.cos(dec))-Math.tan(la)*Math.tan(dec);
+  if(cosH>1)return[];if(cosH<-1)return[[0,M]];
+  const H=Math.acos(cosH)*180/Math.PI,off=tzOff(c.zone,noon);
+  const r5=x=>Math.round(x/5)*5;
+  return lin(r5(720-4*(c.lon+H)-eqt+off),r5(720-4*(c.lon-H)-eqt+off));
+}
+function tzOff(zone,ms){const p={};new Intl.DateTimeFormat('en-US',{timeZone:zone,hourCycle:'h23',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}).formatToParts(new Date(ms)).forEach(x=>p[x.type]=x.value);
+  return Math.round((Date.UTC(+p.year,+p.month-1,+p.day,+p.hour%24,+p.minute)-Math.floor(ms/6e4)*6e4)/6e4)}
+
+/* ---------- engines ---------- */
+const RATE={adv:{pre:60,post:60},del:{pre:90,post:90}};
+function planIntl(st){
+  const B=parseT(st.bed),W=parseT(st.wake),CBT0=W-150;
+  const[y,mo,da]=st.depDate.split('-').map(Number);const dm=parseT(st.depTime);
+  const guess=Date.UTC(y,mo-1,da,Math.floor(dm/60),dm%60);
+  const oc=city(st.origin),dc=city(st.dest);
+  let utc=guess-tzOff(oc.zone,guess)*6e4;utc=guess-tzOff(oc.zone,utc)*6e4;
+  const dur=Math.round((+st.flightH||0)*60),arrUtc=utc+dur*6e4;
+  const offO=tzOff(oc.zone,utc),offD=tzOff(dc.zone,arrUtc);
+  const delta=sdiff(offD-offO,0);
+  const arrL=new Date(arrUtc+offD*6e4);const arrMin=arrL.getUTCHours()*60+arrL.getUTCMinutes();
+  const arrDate=new Date(Date.UTC(arrL.getUTCFullYear(),arrL.getUTCMonth(),arrL.getUTCDate()));
+  const depDate=new Date(Date.UTC(y,mo-1,da));
+  const P=+st.prep;
+  const oName=oc.name,dName=dc.name;
+  const raw=offD-offO;
+  const geo=raw>0?`目的地の時計は${hrs(raw)}進んでいる`:raw<0?`目的地の時計は${hrs(raw)}遅れている`:'時差なし';
+
+  const opt=k=>{const T=k==='adv'?mod(delta):mod(-delta),R=RATE[k];const pre=T<=120?0:Math.min(T,P*R.pre,240);return{k,T,pre,post:Math.ceil((T-pre)/R.post),rate:R}};
+  let k=st.dir;if(k==='auto'){const a=opt('adv'),d=opt('del');k=a.post<d.post?'adv':'del'}
+  const o=opt(k),dir=k==='adv'?1:-1;
+  const summary=[
+    ['時差',raw?(raw>0?'+':'−')+hrs(raw):'0時間',geo],
+    ['体内時計',delta?`${hrs(o.T)}${dir>0?'進める':'遅らせる'}`:'調整不要',delta?(dir>0?'早寝早起き方向':'夜更かし方向')+((dir>0)!==(delta>0)?'・逆回りで合わせる':''):''],
+    ['移動前',o.pre?`${hrs(o.pre)}ずらす`:'準備なし',o.pre?`${P}日間で（上限4時間）`:(o.T<=120?'2時間以内は現地で合わせる':'準備日数0')],
+    ['到着後',o.post?`約${o.post}日で同調`:'すぐ同調',`到着 ${md(arrDate)} ${fmt(arrMin)}（現地）`],
+  ];
+  if(!delta)return{summary,lead:'時差がないので、移動による疲れ以外の調整は不要。現地でも普段の起床時刻と朝の光を守る。',groups:[]};
+
+  const groups=[];const pre=[];
+  for(let i=1;i<=P;i++){
+    const S=Math.max(0,o.pre-(P-i)*o.rate.pre),Sp=Math.max(0,o.pre-(P-i+1)*o.rate.pre);
+    const notes=[];
+    if(S===0)notes.push('まだずらさない。起床時刻を毎日そろえて、時計の位置を安定させておく');
+    else if(Sp===0)notes.push(dir>0?`今日から前倒し。起床を${fmt(W-dir*S)}に、起きたらすぐ屋外の光`:`今日から後ろ倒し。夜の光で寝る時刻を${fmt(B-dir*S)}へ、朝はサングラス`);
+    if(i===P)notes.push('出発日の朝もこの起床時刻と光の当て方を続ける');
+    pre.push(makeDay({tag:`出発${P-i+1}日前`,date:md(addDays(depDate,-(P-i+1))),iso:isoD(addDays(depDate,-(P-i+1))),zone:oc.zone,city:oc,tz:oName+'時刻',dir:S?dir:0,cbt:CBT0-dir*S,pb:B-dir*Sp,wake:W-dir*S,bed:B-dir*S,notes}));
+  }
+  if(pre.length)groups.push({title:`移動前（${oName}の時刻）`,days:pre});
+
+  // in-flight
+  const fl=lin(arrMin-dur,arrMin);const R0=o.T-o.pre;const cbtF=CBT0+dir*R0;
+  const lp=lightPlan(dir,cbtF,W,B,minus(fl,lin(B,W)));
+  const fSleep=inter(fl,lin(B,W));const mealsIn=[{t:W+30,n:'朝'},{t:W+330,n:'昼'},{t:B-210,n:'夕'}].filter(m=>fl.some(([s,e])=>mod(m.t)>=s&&mod(m.t)<e));
+  const fNotes=[];
+  fNotes.push(len(fSleep)?`機内で寝るのは ${ivs(fSleep)}（目的地の夜）。アイマスクと耳栓`:'目的地は昼の時間帯。機内ではなるべく起きておく');
+  if(len(lp.avoid))fNotes.push(`${ivs(lp.avoid)} は窓を閉めて画面も暗く`);
+  if(len(lp.seek))fNotes.push(`${ivs(lp.seek)} は起きて明るく過ごす`);
+  fNotes.push(mealsIn.length?`機内食は ${mealsIn.map(m=>fmt(m.t)+'（'+m.n+'）').join('・')} に合わせ、それ以外は軽く済ませる`:'機内食は軽めに。到着後の現地の食事時刻からしっかり食べる');
+  fNotes.push('乗ったら時計を目的地時刻に。酒は控えて水を多めに');
+  const fDay={tag:'機内',date:`出発 ${md(depDate)} ${fmt(dm)}`,tz:dName+'時刻',sleep:fSleep,nap:[],seek:lp.seek,avoid:lp.avoid,meals:mealsIn.map(m=>({t:mod(m.t),n:m.n})),travel:minus(fl,fSleep),blank:minus([[0,M]],fl),cbt:cbtF,notes:fNotes,flight:true};
+  groups.push({title:`移動中（${dName}の時刻）`,days:[fDay]});
+
+  const post=[];
+  for(let d=1;d<=Math.min(o.post+1,14);d++){
+    const S=Math.min(o.T,o.pre+(d-1)*o.rate.post),R=o.T-S,dd=R>0?dir:0;
+    const notes=[];let nap=[],blank=null,travel=null;
+    if(d===1){blank=[[0,arrMin]];travel=[[Math.max(0,arrMin-dur),arrMin]];notes.push(`${fmt(arrMin)} 到着。ここから現地の時刻で食べて寝る`)}
+    if(R>=180){nap=lin(W+360,W+380);notes.push('日中に眠ければ13時台に20分だけ仮眠。夕方以降は寝ない')}
+    if(R>0)notes.push(`体はまだ${hrs(R)}${dir>0?'遅れて':'先に'}いる（体温最低点 ${fmt(CBT0+dir*R)}）`);
+    else notes.push('同調完了。以後は普段どおりの起床と朝の光で維持');
+    if(R>0&&d===1)notes.push(dir>0?'寝付けなくても目的地の時刻に横になって暗くする':'夕方の眠気は外を歩いてやり過ごす');
+    const r=makeDay({tag:R>0?(d===1?'到着日':`到着${d}日目`):'同調',date:md(addDays(arrDate,d-1)),iso:isoD(addDays(arrDate,d-1)),zone:dc.zone,city:dc,tz:dName+'時刻',dir:dd,cbt:CBT0+dir*R,pb:B,wake:W,bed:B,nap,notes,blank:blank||undefined});
+    if(travel){r.travel=travel;r.arr=arrMin}
+    post.push(r);
+  }
+  groups.push({title:`到着後（${dName}の時刻）`,days:post});
+  const lead=dir>0
+    ?`体内時計を前へ${hrs(o.T)}動かす。鍵は「朝の光を浴び、夜の光を避ける」こと。ただし体温最低点より前の光は逆効果になるので、到着直後は午前中の光を避け、昼〜午後に浴びる。`
+    :`体内時計を後ろへ${hrs(o.T)}動かす。鍵は「夕方〜夜の光を浴び、早朝の光を避ける」こと。到着後しばらくは朝の強い光を避け、午後から夕方にかけて外に出る。`;
+  return{summary,lead,groups};
+}
+
+function planEarly(st){
+  const B=parseT(st.bed),W=parseT(st.wake),CBT0=W-150,Wn=parseT(st.eWake);
+  const home=city(st.origin);const A=sdiff(W,Wn);const P=+st.ePrep;
+  const[y,mo,da]=st.eDate.split('-').map(Number);const day=new Date(Date.UTC(y,mo-1,da));
+  if(A<=0)return{summary:[['前倒し','不要','普段より早くない']],lead:'普段の起床より早くないので、調整は不要。',groups:[]};
+  const pre=Math.min(A,P*60);const days=[];
+  for(let i=1;i<=P;i++){
+    const S=Math.max(0,pre-(P-i)*60),Sp=Math.max(0,pre-(P-i+1)*60);
+    const notes=[S?`起床を${fmt(W-S)}に。起きてすぐカーテンを開け、できれば外へ`:'まだ普段どおり。起床時刻をそろえておく'];
+    if(S)notes.push('夕食を少し早め、夜の照明と画面を落とす。眠くなければ無理に早く寝ない');
+    days.push(makeDay({tag:`${P-i+1}日前`,date:md(addDays(day,-(P-i+1))),iso:isoD(addDays(day,-(P-i+1))),zone:home.zone,city:home,tz:'',dir:S?1:0,cbt:CBT0-S,pb:B-Sp,wake:W-S,bed:B-S,notes}));
+  }
+  const cbt=CBT0-pre,gap=sdiff(Wn,cbt);const tn=[];
+  if(gap<60)tn.push({w:1,t:`起床${fmt(Wn)}は体温最低点（${fmt(cbt)}付近）のすぐ近く＝一日で一番眠い時刻。起きたら照明を全開に、運転は避ける`});
+  tn.push(`起きて90分は明るく。駅のホームや車内の窓際で光を浴びる`);
+  tn.push(`カフェインは起床後に。${fmt(B-pre-480)}以降は控える`);
+  tn.push('眠気が来たら12〜14時に20分だけ仮眠');
+  tn.push(`その夜は${fmt(B-pre)}を目安に早めに寝る`);
+  const travel=makeDay({tag:'移動日',date:md(day),iso:isoD(day),zone:home.zone,city:home,tz:'',dir:1,cbt,pb:B-pre,wake:Wn,bed:B-pre,nap:lin(12*60+30,12*60+50),notes:tn,meals:[{t:Wn+30,n:'朝'},{t:W+300,n:'昼'},{t:B-pre-210,n:'夕'}]});
+  const after=makeDay({tag:'翌日',date:md(addDays(day,1)),iso:isoD(addDays(day,1)),zone:home.zone,city:home,tz:'',dir:0,cbt:CBT0,pb:B-pre,wake:W,bed:B,notes:['普段の時刻に戻す。遅らせる方向なので戻りは楽','寝不足分は夜を少し長めにとる。昼寝で埋めない']});
+  return{
+    summary:[['前倒し幅',hrs(A),`普段${fmt(W)} → ${fmt(Wn)}起き`],['準備',pre?`${hrs(pre)}前倒し`:'準備なし',`${P}日間で`],['当日の不足',A-pre>0?hrs(A-pre):'なし',A-pre>0?'当日は光とカフェインで補う':'体内時計は間に合う']],
+    lead:`早朝出発は「小さな東行き」。体内時計を前に${hrs(A)}動かす必要がある。準備で前倒しするのは寝る時刻ではなく起きる時刻。起きた直後の光が時計を前に引っぱる。`,
+    groups:[...(days.length?[{title:'準備',days}]:[]),{title:'当日と翌日',days:[travel,after]}]};
+}
+
+function planWeekend(st){
+  const B=parseT(st.bed),W=parseT(st.wake),eB=parseT(st.weBed),eW=parseT(st.weWake),CBT0=W-150;
+  const mid=(b,w)=>mod(b+mod(w-b)/2);
+  const sjl=sdiff(mid(eB,eW),mid(B,W));
+  const dB=sdiff(eB,B),dW=sdiff(eW,W),lim=x=>Math.max(0,Math.min(x,60));
+  const pB=B+lim(dB),pWs=W+lim(dW),pWsun=W+Math.min(lim(dW),30);
+  const sjlNew=sdiff(mid(pB,pWs),mid(B,W));
+  const h=Math.abs(sjl)/60;
+  const twin=h<=0.5?null:[[1.5,'台北'],[2.5,'バンコク'],[3.5,'ダッカ'],[5.5,'ドバイ'],[99,'ヨーロッパ']].find(c=>h<=c[0])[1];
+  const home=city(st.origin);const now=new Date();const fri=new Date(Date.UTC(now.getFullYear(),now.getMonth(),now.getDate()+((5-now.getDay()+7)%7)));
+  let wi=0;
+  const mk=(o,cur)=>{const d=addDays(fri,wi++);return{...makeDay({...o,date:md(d),iso:isoD(d),zone:home.zone,city:home}),cur:sleepSegs(cur.pb,cur.w,cur.b)}};
+  const days=[
+    mk({tag:'金曜',date:'',tz:'',dir:0,cbt:CBT0,pb:B,wake:W,bed:pB,notes:[`夜更かしは${fmt(pB)}まで。夜の画面は暗めに`]},{pb:B,w:W,b:eB}),
+    mk({tag:'土曜',date:'',tz:'',dir:0,cbt:CBT0+lim(dW),pb:pB,wake:pWs,bed:pB,notes:[`起床は${fmt(pWs)}まで（平日+1時間が上限）`,'起きて1時間以内に外で20〜30分の光','朝食を起床1時間以内に。食事の時刻が週末の錨になる'],},{pb:eB,w:eW,b:eB}),
+    mk({tag:'日曜',date:'',tz:'',dir:1,cbt:CBT0+lim(dW),pb:pB,wake:pWsun,bed:B,notes:[`起床${fmt(pWsun)}。朝の光でここから月曜へ戻し始める`,'昼寝は15時前に20分まで',`${fmt(B-120)}以降は照明を落とし、${fmt(B)}に寝る`]},{pb:eB,w:eW,b:eB}),
+    mk({tag:'月曜',date:'',tz:'',dir:0,cbt:CBT0,pb:B,wake:W,bed:B,notes:['起きてすぐ外の光。通勤は日の当たる側を歩く','朝食を抜かない。カフェインは午前中に寄せる']},{pb:eB,w:W,b:B}),
+  ];
+  const lvl=h<1?'軽い':h<2?'要注意':'大きい';
+  return{
+    summary:[
+      ['社会的時差ぼけ',hrs(sjl),`睡眠の中央が週末に${sjl>=0?'後ろへ':'前へ'}ずれる・${lvl}`],
+      ['たとえると',twin?`毎週${twin}往復`:'ほぼなし',twin?`金曜に西へ飛び、月曜の朝に戻る`:'週末も平日に近い'],
+      ['月曜の朝',`${fmt(W)}起き`,sjl>30?`体にとっては ${fmt(W-sjl)}起き相当`:'体とのずれは小さい'],
+      ['提案後',hrs(sjlNew),'起床のずれを1時間以内に'],
+    ],
+    lead:`週末の寝坊は体内時計を後ろへずらす（西行き）。月曜はそれを一気に前へ戻す（東行き）ことになり、これが週明けの不調の正体。起床のずれを1時間以内に抑え、日曜の朝の光で先に戻し始める。細い帯が今のパターン、太い帯が提案。`,
+    groups:[{title:'週末から月曜まで',days}],weekend:true};
+}
+
+/* ---------- render ---------- */
+function track(r,cls=''){
+  const seg=(l,c)=>(l||[]).map(([s,e])=>`<i class="${c}" style="left:${(s/M*100).toFixed(3)}%;width:${((e-s)/M*100).toFixed(3)}%"></i>`).join('');
+  let h=`<div class="track ${cls}">`+seg(r.avoid,'av')+seg(r.seek,'sun')+seg(r.sleep,'sl')+seg(r.nap,'nap')+seg(r.travel,'tr')+(r.flight?seg(r.blank,'bl'):'');
+  if(r.cbt!=null&&!cls)h+=`<u class="cbt" style="left:${(mod(r.cbt)/M*100).toFixed(3)}%" title="体温最低点 ${fmt(r.cbt)}"></u>`;
+  if(r.arr!=null)h+=`<u class="arr" style="left:${(r.arr/M*100).toFixed(3)}%"></u>`;
+  return h+'</div>';
+}
+function lane(meals){return`<div class="lane">${meals.map(m=>`<b style="left:${(m.t/M*100).toFixed(3)}%">${m.n}</b>`).join('')}</div>`}
+function dayHTML(r){
+  const det=[];
+  if(!r.flight)det.push(`<span><em>起床</em><span class="t">${fmt(r.wake)}</span></span><span><em>就寝</em><span class="t">${fmt(r.bed)}</span></span>`);
+  if(len(r.seek))det.push(`<span class="s"><em>光を浴びる</em><span class="t">${ivs(r.seek)}</span></span>`);
+  if(len(r.avoid))det.push(`<span><em>光を避ける</em><span class="t">${ivs(r.avoid)}</span></span>`);
+  if(r.meals.length)det.push(`<span><em>食事</em><span class="t">${r.meals.map(m=>fmt(m.t)).join(' / ')}</span></span>`);
+  if(!r.flight&&r.caff)det.push(`<span><em>カフェイン</em><span class="t">${r.caff}</span></span>`);
+  const cur=r.cur?`<div class="curlab">今</div>${track({sleep:r.cur},'cur')}<div class="curlab">提案</div>`:'';
+  return`<div class="day"><div class="lab"><b>${r.tag}</b>${r.date?`<span>${r.date}</span>`:''}${r.tz?`<em>${r.tz}</em>`:''}</div>
+  <div class="body">${cur}${track(r)}${lane(r.meals)}<p class="det">${det.join('')}</p>
+  <ul class="notes">${r.notes.map(n=>typeof n==='string'?`<li>${n}</li>`:`<li class="w">${n.t}</li>`).join('')}</ul></div></div>`;
+}
+function render(){
+  const st=read();save(st);
+  document.querySelectorAll('[data-for]').forEach(f=>f.hidden=f.dataset.for!==st.mode);
+  document.querySelectorAll('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.mode===st.mode));
+  document.querySelectorAll('[data-dir]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.dir===st.dir));
+  document.getElementById('habitLegend').textContent=st.mode==='weekend'?'平日の睡眠':'普段の睡眠';
+  document.getElementById('prepVal').textContent=st.prep+'日';
+  document.getElementById('ePrepVal').textContent=st.ePrep+'日';
+  let p;try{p=st.mode==='intl'?planIntl(st):st.mode==='early'?planEarly(st):planWeekend(st)}catch(e){lastPlan=null;document.getElementById('out').innerHTML=`<p class="lead">入力を確認してください（${e.message}）</p>`;return}
+  lastPlan=p;calRefresh();
+  const ticks=[0,3,6,9,12,15,18,21,24].map(h=>`<span style="left:${h/24*100}%">${h}</span>`).join('');
+  document.getElementById('out').innerHTML=`
+   <div class="summary">${p.summary.map(([a,b,c])=>`<div><small>${a}</small><strong>${b}</strong><span>${c||''}</span></div>`).join('')}</div>
+   <p class="lead">${p.lead}</p>
+   ${p.groups.length?`<div class="legend"><span><i class="sw-sl"></i>睡眠</span><span><i class="sw-sun"></i>光を浴びる</span><span><i class="sw-av"></i>光を避ける</span><span><i class="sw-meal"></i>食事</span><span><i class="sw-cbt"></i>体温最低点（推定）</span>${st.mode==='intl'?'<span><i class="sw-tr"></i>移動中</span>':''}</div>
+   <div class="sched"><div class="axis"><div class="lab"></div><div class="ticks">${ticks}</div></div>
+   ${p.groups.map(g=>`<div class="phase">${g.title}</div>${g.days.map(dayHTML).join('')}`).join('')}</div>`:''}`;
+}
+
+/* ---------- calendar ---------- */
+let lastPlan=null,mcpP=null,calBusy=false,calDone='',resume={sig:'',at:0};
+try{calDone=localStorage.getItem('jisa-cal-done')||''}catch(e){}
+const IN_CLAUDE=!!(window.claude&&window.claude.use);
+/* .ics（RFC 5545）。時刻はUTCで書き出し、各予定にポップアップ通知を付ける */
+function localToUtc(local,zone){const g=Date.parse(local+'Z');let u=g-tzOff(zone,g)*6e4;return g-tzOff(zone,u)*6e4}
+const icsT=ms=>new Date(ms).toISOString().replace(/[-:]/g,'').replace(/\.\d{3}/,'');
+const icsEsc=t=>String(t).replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\r?\n/g,'\\n');
+function icsFold(line){const enc=new TextEncoder();const out=[];let cur='',bytes=0;
+  for(const ch of line){const b=enc.encode(ch).length;if(bytes+b>(out.length?74:75)){out.push(cur);cur='';bytes=0}cur+=ch;bytes+=b}
+  out.push(cur);return out.join('\r\n ')}
+function buildICS(ev){
+  const stamp=icsT(Date.now()),L=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//jisa-hodoki//JA','CALSCALE:GREGORIAN','METHOD:PUBLISH','X-WR-CALNAME:時差ほどき'];
+  ev.forEach((e,i)=>{L.push('BEGIN:VEVENT',`UID:${stamp}-${i}@jisa-hodoki`,`DTSTAMP:${stamp}`,
+    `DTSTART:${icsT(localToUtc(e.startTime,e.timeZone))}`,`DTEND:${icsT(localToUtc(e.endTime,e.timeZone))}`,
+    `SUMMARY:${icsEsc(e.summary)}`,`DESCRIPTION:${icsEsc(e.desc)}`,'TRANSP:TRANSPARENT',
+    'BEGIN:VALARM','ACTION:DISPLAY',`DESCRIPTION:${icsEsc(e.summary.replace('時差ほどき｜',''))}`,`TRIGGER:-PT${e.rem}M`,'END:VALARM','END:VEVENT')});
+  L.push('END:VCALENDAR');return L.map(icsFold).join('\r\n')+'\r\n';
+}
+function downloadICS(ev){
+  const url=URL.createObjectURL(new Blob([buildICS(ev)],{type:'text/calendar;charset=utf-8'}));
+  const a=document.createElement('a');a.href=url;a.download='jisa-hodoki.ics';document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),4000);
+  calStatus(`${ev.length}件の予定を保存しました。ファイルを開くとカレンダーに取り込めます（iPhoneはタップして「すべてを追加」、Googleカレンダーはパソコンの設定 → インポート）。`);
+}
+function getMcp(){if(!mcpP)mcpP=(window.claude&&window.claude.use)?window.claude.use('mcp').catch(()=>null):Promise.resolve(null);return mcpP}
+function eventsFor(groups){
+  const ev=[];
+  for(const g of groups||[])for(const r of g.days){
+    if(!r.iso||r.flight)continue;
+    const base=Date.parse(r.iso+'T00:00:00Z');
+    const at=m=>new Date(base+m*6e4).toISOString().slice(0,19);
+    const pieces=list=>{const L=list.map(x=>x.slice()).sort((a,b)=>a[0]-b[0]);
+      if(L.length>1&&L[0][0]===0&&L[L.length-1][1]===M){const last=L.pop();L[0]=[last[0],M+L[0][1]]}
+      return L.map(([s,e])=>s<mod(r.wake)?[s+M,e+M]:[s,e])};
+    const desc=[r.tag+(r.tz?'（'+r.tz+'）':''),`起床 ${fmt(r.wake)} / 就寝 ${fmt(r.bed)}`,r.meals.length?`食事 ${r.meals.map(m=>fmt(m.t)).join(' / ')}`:'',`カフェイン ${r.caff}`,...r.notes.map(n=>typeof n==='string'?n:n.t)].filter(Boolean).join('\n');
+    for(const[s,e]of pieces(r.seekIn))ev.push({summary:'時差ほどき｜照明で光を浴びる',startTime:at(s),endTime:at(e),timeZone:r.zone,colorId:'5',rem:0,desc});
+    for(const[s,e]of pieces(r.seekOut))ev.push({summary:'時差ほどき｜外で光を浴びる',startTime:at(s),endTime:at(e),timeZone:r.zone,colorId:'5',rem:0,desc});
+    for(const[s,e]of pieces(r.avoid))ev.push({summary:'時差ほどき｜光を避ける',startTime:at(s),endTime:at(e),timeZone:r.zone,colorId:'8',rem:5,desc});
+    const b=mod(r.bed)<mod(r.wake)?mod(r.bed)+M:mod(r.bed);
+    ev.push({summary:'時差ほどき｜就寝',startTime:at(b),endTime:at(b+15),timeZone:r.zone,colorId:'9',rem:30,desc});
+  }
+  return ev;
+}
+const sigOf=ev=>ev.map(e=>e.startTime+e.summary+e.timeZone).join('|');
+function calStatus(t,err){const el=$('calStatus');el.textContent=t;el.classList.toggle('err',!!err)}
+function calRefresh(){
+  if(calBusy)return;
+  const ev=eventsFor(lastPlan&&lastPlan.groups);const sig=sigOf(ev);
+  $('calBtn').disabled=!ev.length;
+  if(!IN_CLAUDE){$('calBtn').textContent=ev.length?`カレンダーに追加（${ev.length}件）`:'追加する予定がありません';return}
+  $('calBtn').textContent=!ev.length?'登録する予定がありません':sig===calDone?'登録済み（もう一度押すと重複）':resume.sig===sig&&resume.at?`続きから登録（残り${ev.length-resume.at}件）`:`Googleカレンダーに登録（${ev.length}件）`;
+  if(sig!==resume.sig)calStatus('');
+}
+const CAL_ERR={
+  needs_reauth:'Googleカレンダーの接続が切れています。claude.ai の設定 → コネクタで再接続してください。',
+  server_not_connected:'Googleカレンダーが接続されていません。claude.ai の設定 → コネクタで追加してください。',
+  selection_required:'Googleカレンダーが複数接続されています。表示された選択で1つ選んでから、もう一度押してください。',
+  approval_required:'カレンダーへの書き込みには許可が必要です。もう一度押すと確認が出ます。',
+  not_in_manifest:'このページにカレンダーの利用が許可されていません。ページの権限メニューから許可してください。',
+  blocked_by_policy:'組織の設定でカレンダーへの書き込みが止められています。',
+  not_granted:'このビューではカレンダー連携が使えません。claude.ai でこのページを開いてください。',
+  capability_disabled:'このビューではカレンダー連携が使えません。claude.ai でこのページを開いてください。'};
+async function calAdd(){
+  if(calBusy)return;
+  const ev=eventsFor(lastPlan&&lastPlan.groups);if(!ev.length)return;
+  const sig=sigOf(ev);
+  if(!IN_CLAUDE){downloadICS(ev);return}
+  const m=await getMcp();
+  if(!m){calStatus('この画面ではカレンダー登録が使えません。',true);return}
+  calBusy=true;$('calBtn').disabled=true;
+  let i=resume.sig===sig?resume.at:0;resume={sig,at:i};
+  for(;i<ev.length;i++){
+    const e=ev[i];
+    calStatus(`登録中… ${i}/${ev.length}`);
+    try{
+      await m.callTool('Google Calendar','create_event',{summary:e.summary,startTime:e.startTime,endTime:e.endTime,timeZone:e.timeZone,colorId:e.colorId,description:e.desc,availability:'AVAILABILITY_FREE',overrideReminders:[{method:'popup',minutes:e.rem}]});
+      resume.at=i+1;
+    }catch(err){
+      const code=err&&err.code;
+      const msg=CAL_ERR[code]||(code==='tool_error'?`カレンダーが登録を受け付けませんでした：${err.message||''}`:`${i}件目の途中で止まりました。この1件が入っている場合があるので、カレンダーを確認してから続きを押してください。`);
+      calStatus(`${i}/${ev.length}件まで登録。${msg}`,true);
+      calBusy=false;calRefresh();return;
+    }
+  }
+  calBusy=false;calDone=sig;resume={sig:'',at:0};
+  try{localStorage.setItem('jisa-cal-done',sig)}catch(e){}
+  calRefresh();
+  calStatus(`${ev.length}件をGoogleカレンダーに登録しました。各予定のリマインダーが通知になります。`);
+}
+
+/* ---------- state ---------- */
+const $=id=>document.getElementById(id);
+const FIELDS=['bed','wake','origin','dest','depDate','depTime','flightH','prep','eDate','eWake','ePrep','weBed','weWake'];
+let mode='intl',dirSel='auto';
+function read(){const s={mode,dir:dirSel};FIELDS.forEach(k=>s[k]=$(k).value);return s}
+function save(s){try{localStorage.setItem('jisa-hodoki',JSON.stringify(s))}catch(e){}}
+function init(){
+  const og=(lab,f)=>`<optgroup label="${lab}">${CITIES.filter(f).map(([n])=>`<option value="${n}">${n}</option>`).join('')}</optgroup>`;
+  const opts=og('国内',c=>c[1]==='Asia/Tokyo')+og('海外',c=>c[1]!=='Asia/Tokyo');
+  $('origin').innerHTML=opts;$('dest').innerHTML=opts;$('origin').value='東京';$('dest').value='パリ';
+  try{const s=JSON.parse(localStorage.getItem('jisa-hodoki')||'null');if(s){FIELDS.forEach(k=>{if(s[k]!=null&&s[k]!=='')$(k).value=s[k]});mode=s.mode||mode;dirSel=s.dir||dirSel}}catch(e){}
+  if(!$('origin').value)$('origin').value='東京';if(!$('dest').value)$('dest').value='パリ';
+  document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{mode=b.dataset.mode;render()}));
+  document.querySelectorAll('[data-dir]').forEach(b=>b.addEventListener('click',()=>{dirSel=b.dataset.dir;render()}));
+  $('f').addEventListener('input',render);$('f').addEventListener('submit',e=>e.preventDefault());
+  $('calBtn').addEventListener('click',calAdd);
+  if(!IN_CLAUDE)$('calInfo').textContent='「光を浴びる」「光を避ける」「就寝」を通知付きの予定ファイル（.ics）で保存。iPhone・Googleカレンダー・Outlookに取り込める。';
+  render();
+}
+init();
+</script>
+
+</body>
+</html>
