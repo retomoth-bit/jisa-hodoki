@@ -239,6 +239,18 @@ input[type=range]{padding:0;background:transparent;border:0;accent-color:var(--s
 .brand-mark{width:30px;height:30px;margin:0 9px 0 0;display:block}
 .t-brand small{padding-left:39px}
 
+.t-banner{display:grid;gap:3px;padding:10px 14px;border:1px solid var(--t-line);border-radius:4px;background:var(--t-sf)}
+.t-banner small{font-size:11px;letter-spacing:.1em;color:var(--t-mut)}
+.t-banner b{font-size:16px;font-weight:500}
+.t-banner p{margin:0;font-size:12.5px;color:var(--t-mut)}
+.t-banner button{justify-self:start;margin-top:6px}
+
+.t-banner{padding:0;border:0;background:none}
+.t-bn{font:inherit;color:var(--t-ink);display:flex;align-items:baseline;gap:10px;width:100%;text-align:left;background:var(--t-sf);border:1px solid var(--t-line);border-radius:4px;padding:10px 14px;cursor:pointer}
+.t-bn small{font-size:11px;letter-spacing:.1em;color:var(--t-mut);white-space:nowrap}
+.t-bn span{flex:1;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.t-bn em{font-style:normal;font-size:12px;color:var(--t-mut);white-space:nowrap}
+
 /* ---------- 試作：石膏と紙の質感 ---------- */
 :root{--bg:#0A0A09;--surface:#141413;--ink:#ECE8E0;--muted:#8A8780;--line:#262523;--track:#1A1A18;
   --t-bg:#0A0A09;--t-sf:#141413;--t-sf2:#141413;--t-ink:#ECE8E0;--t-mut:#8A8780;--t-line:#262523;--t-sun:#ECE8E0;--t-sunlo:#ECE8E0;--t-ok:#2F4A35;--t-warn:#8A2E18;
@@ -353,6 +365,7 @@ input,select{background:#0A0A09;border-color:#2A2927;border-radius:3px}
   <div class="tabp" id="pToday">
     <section class="t-state" id="tState" hidden></section>
     <div id="tLive" style="display:grid;gap:16px">
+      <section class="t-banner" id="tBanner" hidden></section>
       <div class="t-gauges"><section class="t-g" id="gClock"></section><section class="t-g" id="gRec"></section></div>
       <div id="tAlert"></div>
       <div class="t-dial" id="tDial"></div>
@@ -1412,14 +1425,21 @@ function left(ms){const m=Math.round(ms/6e4);if(m<60)return`あと${m}分`;if(m<
 
 /* 今日の表示がないとき（旅の前・機内・旅のあと） */
 function stateCard(kind,html){el('tLive').hidden=true;el('tState').hidden=false;el('tState').innerHTML=html;el('tChip').textContent=kind}
+/* ふだんの一日（出発地の時刻、いつもの起床・就寝） */
+function homeRow(){const st=read(),h=city(st.origin),B=parseT(st.bed),W=parseT(st.wake);const iso=localParts(nowUtc,h.zone).iso;
+  return makeDay({tag:'ふだん',date:md(new Date(iso+'T00:00:00Z')),iso,zone:h.zone,city:h,tz:h.name+'時刻',dir:0,cbt:cbt0(st,B,W),wake:W,bed:B,notes:[],_home:true})}
 function render(){
   if(!el('pToday'))return;
-  if(!lastPlan||!rows.length){stateCard('',`<small>今日</small><b>移動の予定を入れると、ここに今日やることが出ます</b><p>海外移動・早朝の移動・週末のずれのどれでも使えます。</p><button type="button" class="calbtn" data-go="trip">旅程を入れる</button>`);return}
-  const fl=flights.find(f=>nowUtc>=f.depUtc&&nowUtc<f.arrUtc);
-  if(fl){stateCard(fl.tag,`<small>${fl.tag}　${left(fl.arrUtc-nowUtc)}で到着</small><b>${fl.title}</b><ul class="notes">${fl.notes.map(n=>`<li>${typeof n==='string'?n:n.t}</li>`).join('')}</ul>`);return}
-  if(nowUtc<t0){const r=rows[0];stateCard(`${isPrep(r)?'準備開始':r.tag}まで${left(t0-nowUtc).replace('あと','')}`,`<small>次の予定</small><b>${r.tag}　${r.date}</b><p>${isPrep(r)?'この日から、出発に向けて体内時計を少しずつ動かし始めます。':'この日から、今日やることがここに出ます。'}</p><button type="button" class="ghost" data-go="days">全日程を見る</button>`);return}
-  const r0=currentRow();
-  if(!r0||nowUtc>t1){stateCard('おかえりなさい',`<small>旅のあと</small><b>今回の予定はすべて終わりました</b><p>起床時刻をそろえて、起きたらすぐ外の光を。次の移動は「旅程」から入れます。</p><button type="button" class="calbtn" data-go="trip">次の旅程を入れる</button>`);return}
+  /* 旅の前・旅のあと・旅程なし：ふだんの一日を円に描き、上に一行だけ添える */
+  let r0=null,banner='';
+  if(!lastPlan||!rows.length){r0=homeRow();banner=`<button type="button" class="t-bn" data-go="trip"><small>ふだんの一日</small><span>移動の予定を入れる</span><em>›</em></button>`}
+  else{
+    const fl=flights.find(f=>nowUtc>=f.depUtc&&nowUtc<f.arrUtc);
+    if(fl){stateCard(fl.tag,`<small>${fl.tag}　${left(fl.arrUtc-nowUtc)}で到着</small><b>${fl.title}</b><ul class="notes">${fl.notes.map(n=>`<li>${typeof n==='string'?n:n.t}</li>`).join('')}</ul>`);return}
+    if(nowUtc<t0){r0=homeRow();const f=rows[0];banner=`<button type="button" class="t-bn" data-go="days"><small>次の予定</small><span>${f.tag}　${f.date}</span><em>${left(t0-nowUtc)}　›</em></button>`}
+    else{r0=currentRow();if(!r0||nowUtc>t1){r0=homeRow();banner=`<button type="button" class="t-bn" data-go="trip"><small>旅のあと</small><span>今回の予定はすべて終わりました</span><em>›</em></button>`}}
+  }
+  el('tBanner').hidden=!banner;el('tBanner').innerHTML=banner;
   el('tLive').hidden=false;el('tState').hidden=true;
   restoreMorning(r0.iso);
   const lp=localParts(nowUtc,r0.zone);
@@ -1434,7 +1454,10 @@ function render(){
   const cmp0=est.dMeas==null?'予定からの計算のみ':est.opposite?'予定と逆の向きにずれている':Math.abs(est.dMeas)+30<Math.abs(est.dModel)?'予定より早く合ってきている':Math.abs(est.dMeas)>Math.abs(est.dModel)+30?'予定より遅れている':'ほぼ予定どおり';
   const more=est.dMeas==null||est.opposite?'':`${est.src}では ${hrs(Math.abs(est.dMeas))}、計画では ${hrs(Math.abs(est.dModel))}。1日の値に振り回されないよう、両方をならして出しています。`;
   const cmp=cmp0+(more?`<div class="more" hidden>${more}</div>`:'');
-  if(isPrep(r0)){
+  if(r0._home){
+    el('gClock').innerHTML=`<small>体内時計</small><b>${est.dMeas==null?'ふだんどおり':dd<30?'いつもどおり':'いつもより'+hrs(dd)+(est.d<0?'早い':'遅い')}</b>
+      <div class="sub">${est.dMeas==null?'朝の3問に答えると、いつもとのずれが分かります':'今朝の答えから'}</div>`;
+  }else if(isPrep(r0)){
     el('gClock').innerHTML=`<small>出発前の準備</small><b style="color:var(--paper-ink)">${dd<15?'まだ動かさない':hrs(dd)+(est.d<0?'前へ':'後ろへ')}</b>
       <div class="t-bar"><i style="width:${Math.min(100,dd/240*100)}%;background:#161512"></i></div><div class="sub">${est.dMeas==null?'家の時刻から、体内時計をここまで動かす':`${est.src}では ${hrs(Math.abs(est.dMeas))}`}</div>`;
   }else{
@@ -1447,7 +1470,7 @@ function render(){
   const alerts=[];
   if(est.opposite)alerts.push(`${est.src}では、体内時計が予定と逆の向きに動いている可能性があります。光を浴びる・避ける時間帯を特に守り、明日の朝もう一度確かめます。`);
   if(rec.respAlert)alerts.push('夜の呼吸数がいつもより毎分3回以上多い。体調を崩す前触れのことがあります。今日は予定を減らして休み、熱やだるさがあれば医療機関に相談を。');
-  if(!isPrep(r0)&&dd<60&&rec.lv!=null&&rec.lv>=2)alerts.push('時計のずれが1時間以内で、回復度もいつもの範囲。この状態が明日も続けば着地です。');
+  if(!isPrep(r0)&&!r0._home&&dd<60&&rec.lv!=null&&rec.lv>=2)alerts.push('時計のずれが1時間以内で、回復度もいつもの範囲。この状態が明日も続けば着地です。');
   el('tAlert').innerHTML=alerts.map(a=>`<div class="t-alert"${a.includes('着地')?' style="border-left-color:#ECE8E0;color:#ECE8E0"':''}>${a}</div>`).join('');
   {window.ZEN_GROW=0;
    const inAvoid=(r.avoid||[]).some(([a,b])=>lp.min>=a&&lp.min<b)||(r.sleep||[]).some(([a,b])=>lp.min>=a&&lp.min<b);document.getElementById('app').classList.toggle('dusk',inAvoid);}
