@@ -436,10 +436,10 @@ function lightPlan(dir,cbt,wake,bed,awake){
   if(dir>0){seek=lin(cbt,cbt+180);avoid=lin(cbt-180,cbt)}
   else if(dir<0){seek=lin(cbt-180,cbt);avoid=lin(cbt,cbt+180)}
   else{seek=lin(wake,wake+120);avoid=lin(bed-120,bed)}
-  seek=inter(seek,awake);avoid=inter(avoid,awake);
+  seek=minus(inter(seek,awake),lin(bed-90,bed));avoid=inter(avoid,awake);
   if(dir>0){if(len(seek)<60)seek=inter(lin(wake,wake+90),awake);if(len(avoid)<60)avoid=inter(lin(bed-120,bed),awake)}
   if(dir<0){if(len(seek)<60)seek=inter(lin(bed-180,bed),awake);if(len(avoid)<60)avoid=inter(lin(wake,wake+120),awake)}
-  seek=minus(seek,lin(bed-60,bed));   // 寝る前の1時間は照明を落とす時間（光の直後は寝つけない）
+  seek=minus(seek,lin(bed-90,bed));   // 光は入浴（就寝90分前）までに終える。そのあとは入浴と、照明を落とす時間
   return{seek,avoid:minus(avoid,seek)};
 }
 function makeDay(o){
