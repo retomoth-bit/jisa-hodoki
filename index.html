@@ -733,7 +733,7 @@ function downloadICS(ev){
   const url=URL.createObjectURL(new Blob([buildICS(ev)],{type:'text/calendar;charset=utf-8'}));
   const a=document.createElement('a');a.href=url;a.download='jisa-hodoki.ics';document.body.appendChild(a);a.click();a.remove();
   setTimeout(()=>URL.revokeObjectURL(url),4000);
-  calStatus(`${ev.length}件の予定を保存しました。下の手順で取り込んでください。`);
+  calStatus(`${ev.length}件の予定を保存しました。上の手順で取り込んでください。`);
 }
 function getMcp(){if(!mcpP)mcpP=(window.claude&&window.claude.use)?window.claude.use('mcp').catch(()=>null):Promise.resolve(null);return mcpP}
 function eventsFor(groups){
@@ -816,7 +816,7 @@ function renderLegs(){
   $('legs').innerHTML=legs.map((l,i)=>`<div class="leg" data-i="${i}">
     <div class="leghead"><b>移動${i+1}</b><span class="from"></span>${legs.length>1?`<button type="button" class="x" data-del="${i}" aria-label="移動${i+1}を削除">×</button>`:''}</div>
     <div class="row2"><label>行き先<select id="leg${i}_to" data-k="to">${CITY_OPTS}</select></label>
-    <label>移動時間（乗継込み）<input type="number" title="行き先を選ぶと距離からの目安が入る。実際の時間に直す" id="leg${i}_hours" data-k="hours" min="1" max="40" step="0.5"></label></div>
+    <label>移動時間（乗継込み）<input type="number" title="行き先を選ぶと距離からの目安が入る。実際の時間に直す。空にすると目安に戻る" id="leg${i}_hours" data-k="hours" min="1" max="40" step="0.5"></label></div>
     <div class="row2"><label>出発日（現地）<input type="date" id="leg${i}_date" data-k="date"></label>
     <label>出発時刻（現地）<input type="time" id="leg${i}_time" data-k="time" step="300"></label></div></div>`).join('');
   legs.forEach((l,i)=>['to','hours','date','time'].forEach(k=>{$(`leg${i}_${k}`).value=l[k]}));
@@ -841,7 +841,9 @@ function init(){
   const onLeg=e=>{const el=e.target,box=el.closest('.leg');if(!box||!el.dataset.k)return;
     const i=+box.dataset.i;legs[i][el.dataset.k]=el.dataset.k==='hours'?+el.value:el.value;if(el.dataset.k==='hours')legs[i].manual=true;
     if(el.dataset.k==='to'){if(!legs[i].manual)legs[i].hours=estHours(legFrom(i),legs[i].to);$(`leg${i}_hours`).value=legs[i].hours;syncLegFrom()}};
-  $('legs').addEventListener('input',onLeg);$('legs').addEventListener('change',e=>{onLeg(e);render()});
+  $('legs').addEventListener('input',onLeg);$('legs').addEventListener('change',e=>{onLeg(e);const el=e.target,box=el.closest('.leg');
+    if(box&&el.dataset.k==='hours'&&!(+el.value>0)){const i=+box.dataset.i;legs[i].manual=false;legs[i].hours=estHours(legFrom(i),legs[i].to);el.value=legs[i].hours}
+    render()});
   $('legs').addEventListener('click',e=>{const b=e.target.closest('[data-del]');if(!b)return;legs.splice(+b.dataset.del,1);renderLegs();render()});
   $('addLeg').addEventListener('click',()=>{const l=legs[legs.length-1];const to=['ロンドン','パリ','ニューヨーク'].find(n=>n!==l.to);
     legs.push({to,date:plusDays(l.date,3),time:'10:00',hours:estHours(l.to,to)});renderLegs();render()});
