@@ -409,7 +409,7 @@ input,select{background:#0A0A09;border-color:#2A2927;border-radius:3px}
       <div class="modes" role="group" aria-label="モード">
         <button type="button" data-mode="intl" aria-pressed="true">海外移動</button>
         <button type="button" data-mode="early" aria-pressed="false">早朝移動</button>
-        <button type="button" data-mode="weekend" aria-pressed="false">週末のずれ</button>
+        <button type="button" data-mode="weekend" aria-pressed="false">休みのずれ</button>
       </div>
 
       <fieldset>
@@ -447,12 +447,16 @@ input,select{background:#0A0A09;border-color:#2A2927;border-radius:3px}
       </fieldset>
 
       <fieldset data-for="weekend" hidden>
-        <legend>週末の睡眠</legend>
+        <legend>休みの日の睡眠</legend>
         <div class="row2">
           <label>就寝<input type="time" id="weBed" value="01:30" step="900"></label>
           <label>起床<input type="time" id="weWake" value="09:30" step="900"></label>
         </div>
-        <p class="hint">上の「平日の睡眠」と比べて、週末に体内時計がどれだけ西へ旅しているかを出す。</p>
+        <div class="row2">
+          <label>休みの初日（任意）<input type="date" id="weFrom"></label>
+          <label>休みの最終日（任意）<input type="date" id="weTo"></label>
+        </div>
+        <p class="hint">上の「平日の睡眠」と比べて、休みの日に体内時計がどれだけ西へ旅しているかを出す。休みの期間は、土日と祝日から次の休みを自動で見つける。有給などでつなげるときだけ、初日と最終日を入れる。</p>
       </fieldset>
 
       <fieldset class="cal">
@@ -983,6 +987,25 @@ function planEarly(st){
     groups:[...(days.length?[{title:'準備',days}]:[]),{title:'当日と翌日',days:[travel,after]}]};
 }
 
+/* ---- 日本の祝日（いまの祝日法のきまりで計算。外のデータは使わない） ---- */
+const _hol={};
+function jpHolidays(y){
+  if(_hol[y])return _hol[y];
+  const H=new Map(),k=(m,d)=>`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+  const nthMon=(m,n)=>{const f=new Date(Date.UTC(y,m-1,1)).getUTCDay();return 1+((8-f)%7)+(n-1)*7};
+  const shun=Math.floor(20.8431+0.242194*(y-1980)-Math.floor((y-1980)/4)),shu=Math.floor(23.2488+0.242194*(y-1980)-Math.floor((y-1980)/4));
+  [[1,1,'元日'],[1,nthMon(1,2),'成人の日'],[2,11,'建国記念の日'],[2,23,'天皇誕生日'],[3,shun,'春分の日'],[4,29,'昭和の日'],[5,3,'憲法記念日'],[5,4,'みどりの日'],[5,5,'こどもの日'],
+   [7,nthMon(7,3),'海の日'],[8,11,'山の日'],[9,nthMon(9,3),'敬老の日'],[9,shu,'秋分の日'],[10,nthMon(10,2),'スポーツの日'],[11,3,'文化の日'],[11,23,'勤労感謝の日']].forEach(([m,d,n])=>H.set(k(m,d),n));
+  const iso=t=>new Date(t).toISOString().slice(0,10);
+  /* 振替休日：日曜の祝日のあと、最初の祝日でない日 */
+  for(const d of [...H.keys()]){const t=Date.parse(d+'T00:00:00Z');if(new Date(t).getUTCDay()===0){let u=t+864e5;while(H.has(iso(u)))u+=864e5;H.set(iso(u),'振替休日')}}
+  /* 国民の休日：祝日にはさまれた平日 */
+  for(const d of [...H.keys()]){const t=Date.parse(d+'T00:00:00Z'),m=iso(t+864e5),n=iso(t+2*864e5);if(!H.has(m)&&H.has(n)&&new Date(t+864e5).getUTCDay()!==0)H.set(m,'国民の休日')}
+  return _hol[y]=H;
+}
+const holName=(iso,jp)=>jp?jpHolidays(+iso.slice(0,4)).get(iso)||'':'';
+
+/* ---- 週末・連休のずれ ---- */
 function planWeekend(st){
   const B=parseT(st.bed),W=parseT(st.wake),eB=parseT(st.weBed),eW=parseT(st.weWake),CBT0=cbt0(st,B,W);
   const mid=(b,w)=>mod(b+mod(w-b)/2);
@@ -992,25 +1015,41 @@ function planWeekend(st){
   const sjlNew=sdiff(mid(pB,pWs),mid(B,W));
   const h=Math.abs(sjl)/60;
   const twin=h<=0.5?null:[[1.5,'台北'],[2.5,'バンコク'],[3.5,'ダッカ'],[5.5,'ドバイ'],[99,'ヨーロッパ']].find(c=>h<=c[0])[1];
-  const home=city(st.origin);const now=new Date();const fri=new Date(Date.UTC(now.getFullYear(),now.getMonth(),now.getDate()+((5-now.getDay()+7)%7)));
-  let wi=0;
-  const mk=(o,cur)=>{const d=addDays(fri,wi++);return{...makeDay({...o,date:md(d),iso:isoD(d),zone:home.zone,city:home}),cur:sleepSegs(cur.pb,cur.w,cur.b)}};
-  const days=[
-    mk({tag:'金曜',date:'',tz:'',dir:0,cbt:CBT0,pb:B,wake:W,bed:pB,notes:[`夜更かしは${fmt(pB)}まで。夜の画面は暗めに`,'寝不足なら、遅く起きるのではなく早く寝て取り戻す']},{pb:B,w:W,b:eB}),
-    mk({tag:'土曜',date:'',tz:'',dir:0,cbt:CBT0+lim(dW),pb:pB,wake:pWs,bed:pB,notes:[`起床は${fmt(pWs)}まで（平日+1時間が上限）`,'起きて30分以内に外へ。普通の日差しで30分、晴れなら15分','起床時刻が週末の杭。足りない睡眠は寝る時刻を早めて取る','朝食を起床1時間以内に。朝食の時刻も平日から大きく動かさない'],},{pb:eB,w:eW,b:eB}),
-    mk({tag:'日曜',date:'',tz:'',dir:1,cbt:CBT0+lim(dW),pb:pB,wake:pWsun,bed:B,notes:[`起床${fmt(pWsun)}。朝の光でここから月曜へ戻し始める`,'昼寝は15時前に20分まで',`${fmt(B-120)}以降は照明を落とし、${fmt(B)}に寝る`]},{pb:eB,w:eW,b:eB}),
-    mk({tag:'月曜',date:'',tz:'',dir:0,cbt:CBT0,pb:B,wake:W,bed:B,notes:['起きて30分以内に外の光。通勤は日の当たる側を歩く','朝食を抜かない。カフェインは午前中に寄せる']},{pb:eB,w:W,b:B}),
-  ];
+  const home=city(st.origin),jp=home.zone==='Asia/Tokyo';
+  /* 次の休みのかたまり：手で入れた期間があればそれ、なければ土日と祝日から探す */
+  const todayIso=(()=>{const p={};new Intl.DateTimeFormat('en-CA',{timeZone:home.zone,year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date()).forEach(x=>p[x.type]=x.value);return`${p.year}-${p.month}-${p.day}`})();
+  const D=iso=>new Date(iso+'T00:00:00Z'),isOff=d=>{const w=d.getUTCDay();return w===0||w===6||!!holName(isoD(d),jp)};
+  let s,e,manual=false;
+  if(st.weFrom&&st.weTo&&st.weTo>=st.weFrom){s=D(st.weFrom);e=D(st.weTo);manual=true}
+  else{s=D(todayIso);let g=0;while(!isOff(s)&&g++<14)s=addDays(s,1);
+    while(isOff(addDays(s,-1)))s=addDays(s,-1);   // 今日が休みなら、その休みの初日から
+    e=s;while(isOff(addDays(e,1)))e=addDays(e,1);}
+  const n=dayIdx(e)-dayIdx(s)+1;
+  const tagOf=d=>{const hn=holName(isoD(d),jp);return`${WD[d.getUTCDay()]}曜${hn?'・'+hn:''}`};
+  const mk=(d,o,cur)=>({...makeDay({...o,date:md(d),iso:isoD(d),zone:home.zone,city:home,tz:''}),cur:sleepSegs(cur.pb,cur.w,cur.b)});
+  const days=[];
+  const eve=addDays(s,-1);
+  days.push(mk(eve,{tag:'休み前',dir:0,cbt:CBT0,pb:B,wake:W,bed:pB,notes:[`夜更かしは${fmt(pB)}まで。夜の画面は暗めに`,'寝不足なら、遅く起きるのではなく早く寝て取り戻す']},{pb:B,w:W,b:eB}));
+  for(let i=0;i<n;i++){
+    const d=addDays(s,i),last=i===n-1,pre=n>=3&&i===n-2;
+    if(last)days.push(mk(d,{tag:tagOf(d)+'（休み最終日）',dir:1,cbt:CBT0+lim(dW),pb:pB,wake:pWsun,bed:B,notes:[`起床${fmt(pWsun)}。朝の光でここから休み明けへ戻し始める`,'昼寝は15時前に20分まで',`${fmt(B-120)}以降は照明を落とし、${fmt(B)}に寝る`]},{pb:eB,w:eW,b:eB}));
+    else if(pre)days.push(mk(d,{tag:tagOf(d),dir:1,cbt:CBT0+lim(dW),pb:pB,wake:pWs,bed:B+30,notes:[`起床は${fmt(pWs)}まで`,'連休は毎日少しずつ後ろへずれていく。今日から戻し始める',`寝るのは${fmt(B+30)}を目安に`]},{pb:eB,w:eW,b:eB}));
+    else days.push(mk(d,{tag:tagOf(d),dir:0,cbt:CBT0+lim(dW),pb:i?pB:pB,wake:pWs,bed:pB,notes:[`起床は${fmt(pWs)}まで（平日+1時間が上限）`,'起きて30分以内に外へ。普通の日差しで30分、晴れなら15分','起床時刻が休みの杭。足りない睡眠は寝る時刻を早めて取る','朝食を起床1時間以内に。朝食の時刻も平日から大きく動かさない']},{pb:eB,w:eW,b:eB}));
+  }
+  const back=addDays(e,1);
+  days.push(mk(back,{tag:'休み明け',dir:0,cbt:CBT0,pb:B,wake:W,bed:B,notes:['起きて30分以内に外の光。通勤は日の当たる側を歩く','朝食を抜かない。カフェインは午前中に寄せる']},{pb:eB,w:W,b:B}));
   const lvl=h<1?'軽い':h<2?'要注意':'大きい';
+  const range=`${md(s)}〜${md(e)}`;
+  const longB=n>=3;
   return{
     summary:[
-      ['社会的時差ぼけ',hrs(sjl),`睡眠の中央が週末に${sjl>=0?'後ろへ':'前へ'}ずれる・${lvl}`],
-      ['たとえると',twin?`毎週${twin}往復`:'ほぼなし',twin?`金曜に西へ飛び、月曜の朝に戻る`:'週末も平日に近い'],
-      ['月曜の朝',`${fmt(W)}起き`,sjl>30?`体にとっては ${fmt(W-sjl)}起き相当`:'体とのずれは小さい'],
+      ['次の休み',longB?`${n}連休`:'週末',`${range}${manual?'（手で入力）':''}`],
+      ['社会的時差ぼけ',hrs(sjl),`睡眠の中央が休みに${sjl>=0?'後ろへ':'前へ'}ずれる・${lvl}`],
+      ['たとえると',twin?`${longB?'':'毎週'}${twin}往復`:'ほぼなし',twin?`休みの初めに西へ飛び、休み明けの朝に戻る`:'休みも平日に近い'],
       ['提案後',hrs(sjlNew),'起床のずれを1時間以内に'],
     ],
-    lead:`週末の寝坊は体内時計を後ろへずらす（西行き）。月曜はそれを一気に前へ戻す（東行き）ことになり、これが週明けの不調の正体。起床のずれを1時間以内に抑え、日曜の朝の光で先に戻し始める。細い帯が今のパターン、太い帯が提案。`,
-    groups:[{title:'週末から月曜まで',days}],weekend:true};
+    lead:`休みの日の寝坊は体内時計を後ろへずらす（西行き）。休み明けはそれを一気に前へ戻す（東行き）ことになり、これが休み明けの不調の正体。起床のずれを1時間以内に抑え、休みの終わりの朝の光で先に戻し始める。`+(longB?'連休は毎日少しずつ後ろへずれていくので、最後の2日で戻し始める。':'')+'細い帯が今のパターン、太い帯が提案。',
+    groups:[{title:longB?`${n}連休（${range}）`:`週末（${range}）`,days}],weekend:true};
 }
 
 /* ---------- render ---------- */
@@ -1223,7 +1262,7 @@ const CAL_HINT=IS_IOS?'保存したファイルを開いて「すべてを追加
 
 /* ---------- state ---------- */
 const $=id=>document.getElementById(id);
-const FIELDS=['hrMin','bed','wake','origin','prep','eDate','eWake','eBy','ePrep','weBed','weWake'];
+const FIELDS=['hrMin','bed','wake','origin','prep','eDate','eWake','eBy','ePrep','weBed','weWake','weFrom','weTo'];
 let mode='intl';
 let legs=[{to:'パリ',date:'2026-11-04',time:'10:30',hours:14.5},{to:'東京',date:'2026-11-09',time:'19:30',hours:13.5}];
 const MAXLEGS=6;
