@@ -682,8 +682,10 @@ function render(){
   document.getElementById('habitLegend').textContent=st.mode==='weekend'?'平日の睡眠':'普段の睡眠';
   document.getElementById('prepVal').textContent=st.prep+'日';
   document.getElementById('ePrepVal').textContent=st.ePrep+'日';
-  let p;try{p=st.mode==='intl'?planIntl(st):st.mode==='early'?planEarly(st):planWeekend(st)}catch(e){lastPlan=null;calRefresh();document.getElementById('out').innerHTML=`<p class="lead">入力を確認してください（${e.message}）</p>`;return}
+  let p;try{p=st.mode==='intl'?planIntl(st):st.mode==='early'?planEarly(st):planWeekend(st)}catch(e){lastPlan=null;calRefresh();calStatus(`計算できません：${e.message}`,true);document.getElementById('out').innerHTML=`<p class="lead">入力を確認してください（${e.message}）</p>`;return}
   lastPlan=p;calRefresh();
+  if(!eventsFor(p.groups).length&&!calBusy)calStatus(p.lead||'予定を作れる日がありません',true);
+  else if($('calStatus').classList.contains('err')&&!calBusy)calStatus('');
   const ticks=[0,3,6,9,12,15,18,21,24].map(h=>`<span style="left:${h/24*100}%">${h}</span>`).join('');
   document.getElementById('out').innerHTML=`
    <div class="summary">${p.summary.map(([a,b,c])=>`<div><small>${a}</small><strong>${b}</strong><span>${c||''}</span></div>`).join('')}</div>
@@ -822,15 +824,16 @@ function init(){
   if(!$('origin').value)$('origin').value='東京';
   renderLegs();
   document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{mode=b.dataset.mode;render()}));
-  $('legs').addEventListener('input',e=>{const el=e.target,box=el.closest('.leg');if(!box||!el.dataset.k)return;
+  const onLeg=e=>{const el=e.target,box=el.closest('.leg');if(!box||!el.dataset.k)return;
     const i=+box.dataset.i;legs[i][el.dataset.k]=el.dataset.k==='hours'?+el.value:el.value;
-    if(el.dataset.k==='to'){legs[i].hours=estHours(legFrom(i),legs[i].to);$(`leg${i}_hours`).value=legs[i].hours;syncLegFrom()}});
+    if(el.dataset.k==='to'){legs[i].hours=estHours(legFrom(i),legs[i].to);$(`leg${i}_hours`).value=legs[i].hours;syncLegFrom()}};
+  $('legs').addEventListener('input',onLeg);$('legs').addEventListener('change',e=>{onLeg(e);render()});
   $('legs').addEventListener('click',e=>{const b=e.target.closest('[data-del]');if(!b)return;legs.splice(+b.dataset.del,1);renderLegs();render()});
   $('addLeg').addEventListener('click',()=>{const l=legs[legs.length-1];const to=['ロンドン','パリ','ニューヨーク'].find(n=>n!==l.to);
     legs.push({to,date:plusDays(l.date,3),time:'10:00',hours:estHours(l.to,to)});renderLegs();render()});
   $('addReturn').addEventListener('click',()=>{const l=legs[legs.length-1];
     legs.push({to:$('origin').value,date:plusDays(l.date,4),time:'19:00',hours:estHours(l.to,$('origin').value)});renderLegs();render()});
-  $('f').addEventListener('input',render);$('f').addEventListener('submit',e=>e.preventDefault());
+  $('f').addEventListener('input',render);$('f').addEventListener('change',render);$('f').addEventListener('submit',e=>e.preventDefault());
   $('calBtn').addEventListener('click',calAdd);
   if(!IN_CLAUDE)$('calInfo').textContent='「光を浴びる」「光を避ける」「就寝」を通知付きの予定ファイル（.ics）で保存。iPhone・Googleカレンダー・Outlookに取り込める。';
   render();
