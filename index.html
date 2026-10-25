@@ -851,6 +851,10 @@ function planIntl(st){
   const P=+st.prep,groups=[],stops=[];
   let Bz=L[0].offO;                      // 体が合っているタイムゾーン（UTCからの分）
   const o0=choose(sdiff(L[0].offD-Bz,0),P);let dir=o0.k==='adv'?1:-1;
+  /* 暮らしの上限：出発前にずらすのは2時間まで。残りは到着後に合わせる */
+  const PRE_CAP=120;
+  o0.capped=o0.pre>PRE_CAP;
+  if(o0.capped){o0.pre=Math.round(PRE_CAP/5)*5;o0.gain=Math.round(o0.pre*PRE_GAIN/5)*5;o0.post=Math.ceil((o0.T-o0.gain)/o0.rate.post)}
 
   /* 出発前 */
   const pre=[];const t0=L[0];
@@ -933,7 +937,7 @@ function planIntl(st){
   const route=[home.name,...L.map(t=>t.tc.name)].join(' → ');
   const summary=[
     ['旅程',`${L.length}区間`,route],
-    ['出発前',o0.pre?`生活を${hrs(o0.pre)}ずらす`:'準備なし',o0.pre?`${P}日間で。体内時計は約${hrs(o0.gain)}動く`:(o0.T<=120?'2時間以内は現地で合わせる':'準備日数0')],
+    ['出発前',o0.pre?`生活を${hrs(o0.pre)}ずらす`:'準備なし',o0.pre?`${P}日間で。体内時計は約${hrs(o0.gain)}動く`+(o0.capped?'。出発前にずらすのは2時間まで':''):(o0.T<=120?'2時間以内は現地で合わせる':'準備日数0')],
     ['最初の調整',stops[0].adj,`${L[0].tc.name}・大事な予定は${stops[0].ok}`],
     [L.length>1?'最後の到着後':'到着後',lastStop.out,`${lastStop.name} ${lastStop.arr} 着`],
   ];
