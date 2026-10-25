@@ -306,8 +306,8 @@ input[type=range]{padding:0;background:transparent;border:0;accent-color:var(--s
           <button type="button" id="addReturn" class="ghost">＋ 帰りの便</button>
         </div>
         <label>最初の移動の準備日数 <span class="rangeval" id="prepVal">3日</span><input type="range" id="prep" min="0" max="7" value="3"></label>
-        <p class="hint">予約のときは、席は主翼の上に。機体が大きいほど、また朝の便ほど揺れにくい。</p>
-        <p class="hint">移動時間は行き先を選ぶと距離からの目安が入るので、乗継込みの実際の時間に直す。A→B→C→A のように何区間でも入れられる。体内時計は区間ごとにリセットせず、旅程全体を通して計算する。時計を進めるか遅らせるかは、早く合う方を自動で選ぶ。</p>
+        <p class="hint">飛行機を予約するときは、席は主翼の上に。機体が大きいほど、また朝の便ほど揺れにくい。</p>
+        <p class="hint">移動時間は行き先と移動手段を選ぶと距離からの目安が入るので、乗継込みの実際の時間に直す。A→B→C→A のように何区間でも入れられる。体内時計は区間ごとにリセットせず、旅程全体を通して計算する。時計を進めるか遅らせるかは、早く合う方を自動で選ぶ。</p>
       </fieldset>
 
       <fieldset data-for="early" hidden>
@@ -316,6 +316,7 @@ input[type=range]{padding:0;background:transparent;border:0;accent-color:var(--s
           <label>移動日<input type="date" id="eDate" value="2026-10-28"></label>
           <label>その日の起床<input type="time" id="eWake" value="04:30" step="900"></label>
         </div>
+        <label>移動手段<select id="eBy"><option value="rail">新幹線・電車</option><option value="air">飛行機</option><option value="bus">バス</option><option value="car">車（自分で運転）</option><option value="ship">船</option></select></label>
         <label>前倒しの準備日数 <span class="rangeval" id="ePrepVal">2日</span><input type="range" id="ePrep" min="0" max="3" value="2"></label>
         <p class="hint">新幹線の始発や早朝便など。前倒しは「早く寝る」より「早く起きて朝の光」の方が効く。</p>
       </fieldset>
@@ -391,6 +392,7 @@ input[type=range]{padding:0;background:transparent;border:0;accent-color:var(--s
       <li><b>睡眠の規則性</b>：規則性は睡眠時間より強い死亡リスクの予測因子。Windred DP ほか. <i>Sleep</i> 2024;47(1):zsad253. doi:10.1093/sleep/zsad253</li>
       <li><b>社会的時差ぼけ</b>：平日と休日の睡眠中央時刻の差。Wittmann M ほか. <i>Chronobiol Int</i> 2006;23(1-2):497-509. doi:10.1080/07420520500545979 ／ Roenneberg T ほか. <i>Curr Biol</i> 2012;22(10):939-43. doi:10.1016/j.cub.2012.03.038</li>
       <li><b>機内の揺れ</b>：北大西洋上空の強い晴天乱気流は、1979〜2020年で年間17.7時間から27.4時間へ約55%増加。Prosser MC, Williams PD, Marlton GJ, Harrison RG. <i>Geophys Res Lett</i> 2023;50:e2023GL103814. doi:10.1029/2023GL103814</li>
+      <li><b>運転中の眠気</b>：カフェインをとってすぐ15分の仮眠をとると、どちらか一方より眠気と運転の乱れが減る。Reyner LA, Horne JA. <i>Psychophysiology</i> 1997;34(6):721-5. doi:10.1111/j.1469-8986.1997.tb02148.x</li>
       <li><b>メラトニン</b>：Herxheimer A, Petrie KJ. <i>Cochrane Database Syst Rev</i> 2002;(2):CD001520. doi:10.1002/14651858.CD001520</li>
     </ul>
   </section>
@@ -640,6 +642,54 @@ function climNotes(t,iso){
   return{notes:out,gap:gap>=15?gap:0,text:`${t.tc.name} ${+iso.slice(5,7)}月の平年 最高${h[0]}℃・最低${h[1]}℃`};
 }
 
+/* 移動手段 */
+const MODE={air:{n:'飛行機',in:'機内',kmh:800,pad:0.5},rail:{n:'新幹線・電車',in:'車内',kmh:180,pad:0.3},bus:{n:'バス',in:'車内',kmh:60,pad:0.3},car:{n:'車（自分で運転）',in:'運転中',kmh:70,pad:0.2},ship:{n:'船',in:'船内',kmh:30,pad:0.5}};
+const MODE_OPTS=Object.entries(MODE).map(([k,v])=>`<option value="${k}">${v.n}</option>`).join('');
+const DVT='片脚だけの腫れ、ふくらはぎの痛みや熱っぽさが出たら早めに受診。急な息苦しさや胸の痛みはすぐ救急へ';
+/* 移動中の過ごし方。o: name, fSleep, avoid, seek, mealsIn, dur(分), cbtF, fl, zoneChange */
+function transitNotes(by,o){
+  const m=MODE[by]||MODE.air,N=[],long=o.dur>=120,vlong=o.dur>=240;
+  if(by==='car'){
+    const risk=inter(o.fl,lin(o.cbtF-120,o.cbtF+120));
+    if(len(risk))N.push({w:1,t:`${ivs(risk)} は体温最低点の前後で、一日で一番眠い時間帯。この時間の運転はできれば避けるか、誰かと交代する`});
+    N.push('2時間ごとに休憩して、車を降りて歩く');
+    N.push('眠気が来たら安全な場所に止め、コーヒーを飲んですぐ15〜20分の仮眠。起きるころにカフェインが効き始める');
+    if(len(o.avoid))N.push(`${ivs(o.avoid)} は光を避けたい時間帯。運転中はサングラスで`);
+    if(len(o.seek))N.push(`${ivs(o.seek)} は光を浴びたい時間帯。休憩は外で`);
+  }else{
+    N.push(len(o.fSleep)?`${m.in}で寝るのは ${ivs(o.fSleep)}（${o.name}の夜）。アイマスクと耳栓`:`${o.name}は昼の時間帯。${m.in}ではなるべく起きておく`);
+    if(len(o.fSleep))N.push(`${m.in}で寝る時間があるので、乗る前と${m.in}のコーヒー・緑茶は控える`);
+    if(len(o.avoid))N.push(`${ivs(o.avoid)} は`+{air:'窓を閉めて画面も暗く',rail:'通路側の席か、窓のブラインドを下ろす。アイマスクも',bus:'カーテンを閉めてアイマスク',ship:'船室の中で過ごす'}[by]);
+    if(len(o.seek))N.push(`${ivs(o.seek)} は`+{air:'起きて明るく過ごす',rail:'窓側の席で外を見て過ごす',bus:'カーテンを開けて外を見る',ship:'デッキに出て外の光を浴びる'}[by]);
+  }
+  N.push(`${o.name}の時刻で食べる。`+(o.mealsIn.length?`${o.mealsIn.map(x=>fmt(x.t)).join('・')} ごろの食事はとり、`:'')+'それ以外は軽く、食べ過ぎない。水はこまめに');
+  if(by!=='car')N.push(o.zoneChange?`乗ったら時計を${o.name}の時刻に。酒は控える`:'酒は控える');
+  if(by==='air'){
+    N.push('2時間に1回は通路を歩く。座っている間も、ふくらはぎを動かす');
+    N.push('足が床につかないときは、荷物などを足台にして、座面の縁で太ももの裏を圧迫しない');
+    N.push('座っている間はベルトを締めたまま。揺れによるけがのほとんどは、ベルトをしていない人');
+    N.push('揺れや不安で落ち着かないときは、4秒吸って8秒吐くを10回。吐く息を長くすると神経が静まる');
+    if(vlong)N.push(DVT);
+  }
+  if(by==='rail'){
+    if(long)N.push('1〜2時間に1回はデッキまで歩く');
+    N.push('人の多さや音で消耗しやすい人は、ノイズキャンセリングのイヤホン、車両の端の席、混む時間を避ける。降りた直後に予定を詰めない');
+  }
+  if(by==='bus'){
+    N.push('シートベルトを締める。休憩のたびに降りて歩く');
+    N.push('酔いやすい人は前のほうの席で遠くを見る。スマホや読書は避ける');
+    if(vlong)N.push(DVT);
+  }
+  if(by==='ship'){
+    N.push('揺れが一番小さいのは、船の中央・低いデッキ。においを避けるなら外気に近い場所');
+    N.push('穏やかなら遠くの水平線をぼんやり見る。荒れてきたら目を閉じて仰向けになり、頭を動かさない。スマホや読書は避ける');
+    N.push('乗る1〜2時間前に、消化のよい軽食を腹八分で。脂っこいもの・酒・多すぎるカフェインは控える');
+    N.push('酔い止めを使うなら、気持ち悪くなってからではなく乗る30〜60分前に');
+    N.push('揺れや不安で落ち着かないときは、4秒吸って8秒吐くを10回');
+  }
+  return N;
+}
+
 /* ---------- engines ---------- */
 const RATE={adv:{pre:60,post:60},del:{pre:90,post:90}};
 /* ---- 旅程（A→B→C…）：体内時計を区間ごとにリセットせず、全体を通して追いかける ---- */
@@ -665,7 +715,7 @@ function planIntl(st){
   const legs=(st.legs||[]).filter(l=>l.to&&l.date&&l.time&&+l.hours>0);
   if(!legs.length)return{summary:[],lead:'移動を1つ以上入れてください。',groups:[]};
   const L=[];let from=home.name;
-  legs.forEach((l,i)=>{if(l.to===from)throw new Error(`移動${i+1}の行き先が出発地（${from}）と同じです。行き先を変えるか、この移動を消してください`);L.push(legTimes(from,l.to,l.date,l.time,l.hours));from=l.to});
+  legs.forEach((l,i)=>{if(l.to===from)throw new Error(`移動${i+1}の行き先が出発地（${from}）と同じです。行き先を変えるか、この移動を消してください`);L.push(Object.assign(legTimes(from,l.to,l.date,l.time,l.hours),{by:MODE[l.by]?l.by:'air'}));from=l.to});
   for(let i=1;i<L.length;i++)if(L[i].depUtc<=L[i-1].arrUtc)throw new Error(`移動${i+1}の出発が、移動${i}の到着より前になっています`);
   const P=+st.prep,groups=[],stops=[];
   let Bz=L[0].offO;                      // 体が合っているタイムゾーン（UTCからの分）
@@ -678,7 +728,7 @@ function planIntl(st){
     const notes=[];
     if(S===0)notes.push('まだずらさない。起床時刻を毎日そろえて、時計の位置を安定させておく');
     else if(Sp===0)notes.push(dir>0?`今日から前倒し。起床を${fmt(W-dir*S)}に、起きたらすぐ屋外の光`:`今日から後ろ倒し。夜の光で寝る時刻を${fmt(B-dir*S)}へ、朝はサングラス`);
-    if(i===1)notes.push('これから予約するなら、席は主翼の上に。機体が大きいほど、また朝の便ほど揺れにくい');
+    if(i===1&&L[0].by==='air')notes.push('これから予約するなら、席は主翼の上に。機体が大きいほど、また朝の便ほど揺れにくい');
     if(i===P)notes.push('出発日の朝もこの起床時刻と光の当て方を続ける。ナッツなど持ち運べる食べ物を用意すると、現地の食事時刻を守りやすい');
     const d=addDays(t0.depDate,-(P-i+1));
     pre.push(makeDay({tag:`出発${P-i+1}日前`,date:md(d),iso:isoD(d),zone:home.zone,city:home,tz:home.name+'時刻',dir:S?dir:0,cbt:CBT0-dir*S*PRE_GAIN,pb:B-dir*Sp,wake:W-dir*S,bed:B-dir*S,notes}));
@@ -700,17 +750,9 @@ function planIntl(st){
     const lp=lightPlan(R>=15?dir:0,cbtF,W,B,minus(fl,lin(B,W)));
     const fSleep=inter(fl,lin(B,W));
     const mealsIn=[{t:W+30,n:'朝'},{t:W+330,n:'昼'},{t:B-210,n:'夕'}].filter(m=>fl.some(([s,e])=>mod(m.t)>=s&&mod(m.t)<e));
-    const fNotes=[];
-    fNotes.push(len(fSleep)?`機内で寝るのは ${ivs(fSleep)}（${name}の夜）。アイマスクと耳栓`:`${name}は昼の時間帯。機内ではなるべく起きておく`);
-    if(len(lp.avoid))fNotes.push(`${ivs(lp.avoid)} は窓を閉めて画面も暗く`);
-    if(len(lp.seek))fNotes.push(`${ivs(lp.seek)} は起きて明るく過ごす`);
-    fNotes.push(`機内では${name}の時刻で食べる。`+(mealsIn.length?`${mealsIn.map(m=>fmt(m.t)).join('・')} ごろの機内食はとり、`:'')+'それ以外の時間帯は軽めにして水分を多めに');
-    fNotes.push(`乗ったら時計を${name}の時刻に。酒は控えて水を多めに`);
-    if(len(fSleep))fNotes.splice(1,0,'機内で寝る時間があるので、搭乗前と機内のコーヒー・緑茶は控える');
-    fNotes.push('2時間に1回は通路を歩く。座っている間も、ふくらはぎを動かす');
-    fNotes.push('座っている間はベルトを締めたまま。揺れによるけがのほとんどは、ベルトをしていない人');
-    fNotes.push('揺れや不安で落ち着かないときは、4秒吸って8秒吐くを10回。吐く息を長くすると神経が静まる');
-    groups.push({title:`移動${L.length>1?i+1:''}　${t.fc.name} → ${name}（${name}の時刻）`,days:[{tag:'機内',date:`出発 ${md(t.depDate)} ${fmt(t.depMin)}`,tz:t.fc.name+'時刻',sleep:fSleep,nap:[],seek:lp.seek,avoid:lp.avoid,meals:mealsIn.map(m=>({t:mod(m.t),n:m.n})),ex:[],travel:minus(fl,fSleep),blank:minus([[0,M]],fl),cbt:cbtF,notes:fNotes,flight:true,depUtc:t.depUtc,arrUtc:t.arrUtc}]});
+    const md0=MODE[t.by]||MODE.air;
+    const fNotes=transitNotes(t.by,{name,fSleep,avoid:lp.avoid,seek:lp.seek,mealsIn,dur:t.dur,cbtF,fl,zoneChange:t.offD!==t.offO});
+    groups.push({title:`移動${L.length>1?i+1:''}　${t.fc.name} → ${name}・${md0.n}（${name}の時刻）`,days:[{tag:md0.in==='運転中'?'運転':md0.in,date:`出発 ${md(t.depDate)} ${fmt(t.depMin)}`,tz:t.fc.name+'時刻',sleep:fSleep,nap:[],seek:lp.seek,avoid:lp.avoid,meals:mealsIn.map(m=>({t:mod(m.t),n:m.n})),ex:[],travel:minus(fl,fSleep),blank:minus([[0,M]],fl),cbt:cbtF,notes:fNotes,flight:true,depUtc:t.depUtc,arrUtc:t.arrUtc}]});
 
     /* 滞在 */
     const stay=last?null:dayIdx(nxt.depDate)-dayIdx(t.arrDate);
@@ -788,7 +830,13 @@ function planEarly(st){
   }
   const cbt=CBT0-pre*PRE_GAIN,gap=sdiff(Wn,cbt);const tn=[];
   if(gap<60)tn.push({w:1,t:`起床${fmt(Wn)}は体温最低点（${fmt(cbt)}付近）のすぐ近く＝一日で一番眠い時刻。起きたら照明を全開に、運転は避ける`});
-  tn.push(`起きて90分は明るく。駅のホームや車内の窓際で光を浴びる`);
+  const eby=st.eBy||'rail';
+  if(eby==='car')tn.push({w:1,t:'起きてすぐの運転は、体がまだ一番眠い時間帯の近く。出発前に照明を全開にし、2時間ごとに休憩。眠気が来たら止めて、コーヒーを飲んで15〜20分の仮眠'});
+  else tn.push(`起きて90分は明るく。${{rail:'駅のホームや車内の窓側の席',air:'空港の窓際や機内の窓側の席',bus:'停留所や窓側の席',ship:'デッキ'}[eby]}で光を浴びる`);
+  tn.push('移動中は食べ過ぎない。朝食は起きて1時間以内に、軽めでも時刻を守る');
+  if(eby==='rail')tn.push('寝不足の朝は音や人混みで消耗しやすい。ノイズキャンセリングのイヤホンが役立つ');
+  if(eby==='bus')tn.push('酔いやすい人は前のほうの席で遠くを見る。スマホや読書は避ける');
+  if(eby==='ship')tn.push('乗る1〜2時間前に軽食を腹八分で。船の中央・低いデッキで過ごす');
   tn.push(`カフェインは起床後に。${fmt(B-pre-480)}以降は控える`);
   tn.push('眠気が来たら12〜14時に20分だけ仮眠');
   tn.push(`その夜は${fmt(B-pre)}を目安に早めに寝る`);
@@ -1038,7 +1086,7 @@ const CAL_HINT=IS_IOS?'保存したファイルを開いて「すべてを追加
 
 /* ---------- state ---------- */
 const $=id=>document.getElementById(id);
-const FIELDS=['hrMin','bed','wake','origin','prep','eDate','eWake','ePrep','weBed','weWake'];
+const FIELDS=['hrMin','bed','wake','origin','prep','eDate','eWake','eBy','ePrep','weBed','weWake'];
 let mode='intl';
 let legs=[{to:'パリ',date:'2026-11-04',time:'10:30',hours:14.5},{to:'東京',date:'2026-11-09',time:'19:30',hours:13.5}];
 const MAXLEGS=6;
@@ -1050,18 +1098,19 @@ function syncLegFrom(){document.querySelectorAll('#legs .from').forEach((el,i)=>
 function renderLegs(){
   $('legs').innerHTML=legs.map((l,i)=>`<div class="leg" data-i="${i}">
     <div class="leghead"><b>移動${i+1}</b><span class="from"></span>${legs.length>1?`<button type="button" class="x" data-del="${i}" aria-label="移動${i+1}を削除">×</button>`:''}</div>
-    <div class="row2"><label>行き先<select id="leg${i}_to" data-k="to">${CITY_OPTS}</select></label>
-    <label>移動時間（乗継込み）<input type="number" title="行き先を選ぶと距離からの目安が入る。実際の時間に直す。空にすると目安に戻る" id="leg${i}_hours" data-k="hours" min="1" max="40" step="0.5"></label></div>
+    <label>行き先<select id="leg${i}_to" data-k="to">${CITY_OPTS}</select></label>
+    <div class="row2"><label>移動手段<select id="leg${i}_by" data-k="by">${MODE_OPTS}</select></label>
+    <label>移動時間（乗継込み）<input type="number" title="行き先と移動手段から目安が入る。実際の時間に直す。空にすると目安に戻る" id="leg${i}_hours" data-k="hours" min="0.5" max="72" step="0.5"></label></div>
     <div class="row2"><label>出発日（現地）<input type="date" id="leg${i}_date" data-k="date"></label>
     <label>出発時刻（現地）<input type="time" id="leg${i}_time" data-k="time" step="300"></label></div></div>`).join('');
-  legs.forEach((l,i)=>['to','hours','date','time'].forEach(k=>{$(`leg${i}_${k}`).value=l[k]}));
+  legs.forEach((l,i)=>{if(!MODE[l.by])l.by='air';['to','by','hours','date','time'].forEach(k=>{$(`leg${i}_${k}`).value=l[k]})});
   syncLegFrom();
   $('addLeg').disabled=$('addReturn').disabled=legs.length>=MAXLEGS;
 }
 /* 大圏距離から移動時間の目安（巡航約800km/h＋地上の前後30分、30分刻み） */
-function estHours(a,b){const A=city(a),B=city(b),R=6371,t=Math.PI/180;
+function estHours(a,b,by){const A=city(a),B=city(b),R=6371,t=Math.PI/180,md=MODE[by]||MODE.air;
   const h=Math.sin((B.lat-A.lat)*t/2)**2+Math.cos(A.lat*t)*Math.cos(B.lat*t)*Math.sin((B.lon-A.lon)*t/2)**2;
-  const km=2*R*Math.asin(Math.sqrt(h));return Math.max(1,Math.round((km/800+0.5)*2)/2)}
+  const km=2*R*Math.asin(Math.sqrt(h));return Math.max(0.5,Math.round((km/md.kmh+md.pad)*2)/2)}
 function plusDays(iso,n){const d=new Date(iso+'T00:00:00Z');return isoD(addDays(d,n))}
 function init(){
   CITY_OPTS=REGIONS.map(r=>`<optgroup label="${r}">${CITIES.filter(c=>c[4]===r).map(([n])=>`<option value="${n}">${n}</option>`).join('')}</optgroup>`).join('');
@@ -1075,15 +1124,15 @@ function init(){
   document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{mode=b.dataset.mode;render()}));
   const onLeg=e=>{const el=e.target,box=el.closest('.leg');if(!box||!el.dataset.k)return;
     const i=+box.dataset.i;legs[i][el.dataset.k]=el.dataset.k==='hours'?+el.value:el.value;if(el.dataset.k==='hours')legs[i].manual=true;
-    if(el.dataset.k==='to'){if(!legs[i].manual)legs[i].hours=estHours(legFrom(i),legs[i].to);$(`leg${i}_hours`).value=legs[i].hours;syncLegFrom()}};
+    if(el.dataset.k==='to'||el.dataset.k==='by'){if(!legs[i].manual)legs[i].hours=estHours(legFrom(i),legs[i].to,legs[i].by);$(`leg${i}_hours`).value=legs[i].hours;syncLegFrom()}};
   $('legs').addEventListener('input',onLeg);$('legs').addEventListener('change',e=>{onLeg(e);const el=e.target,box=el.closest('.leg');
-    if(box&&el.dataset.k==='hours'&&!(+el.value>0)){const i=+box.dataset.i;legs[i].manual=false;legs[i].hours=estHours(legFrom(i),legs[i].to);el.value=legs[i].hours}
+    if(box&&el.dataset.k==='hours'&&!(+el.value>0)){const i=+box.dataset.i;legs[i].manual=false;legs[i].hours=estHours(legFrom(i),legs[i].to,legs[i].by);el.value=legs[i].hours}
     render()});
   $('legs').addEventListener('click',e=>{const b=e.target.closest('[data-del]');if(!b)return;legs.splice(+b.dataset.del,1);renderLegs();render()});
   $('addLeg').addEventListener('click',()=>{const l=legs[legs.length-1];const to=['ロンドン','パリ','ニューヨーク'].find(n=>n!==l.to);
-    legs.push({to,date:plusDays(l.date,3),time:'10:00',hours:estHours(l.to,to)});renderLegs();render()});
+    legs.push({to,by:'air',date:plusDays(l.date,3),time:'10:00',hours:estHours(l.to,to,'air')});renderLegs();render()});
   $('addReturn').addEventListener('click',()=>{const l=legs[legs.length-1];
-    legs.push({to:$('origin').value,date:plusDays(l.date,4),time:'19:00',hours:estHours(l.to,$('origin').value)});renderLegs();render()});
+    legs.push({to:$('origin').value,by:l.by||'air',date:plusDays(l.date,4),time:'19:00',hours:estHours(l.to,$('origin').value,l.by)});renderLegs();render()});
   $('f').addEventListener('input',render);$('f').addEventListener('change',render);$('f').addEventListener('submit',e=>e.preventDefault());
   $('calBtn').addEventListener('click',calAdd);
   if(!IN_CLAUDE){
@@ -1213,7 +1262,7 @@ function render(){
   if(!el('pToday'))return;
   if(!lastPlan||!rows.length){stateCard('',`<small>今日</small><b>移動の予定を入れると、ここに今日やることが出ます</b><p>海外移動・早朝の移動・週末のずれのどれでも使えます。</p><button type="button" class="calbtn" data-go="trip">旅程を入れる</button>`);return}
   const fl=flights.find(f=>nowUtc>=f.depUtc&&nowUtc<f.arrUtc);
-  if(fl){stateCard('機内',`<small>機内 ${left(fl.arrUtc-nowUtc)}で到着</small><b>${fl.title}</b><ul class="notes">${fl.notes.map(n=>`<li>${typeof n==='string'?n:n.t}</li>`).join('')}</ul>`);return}
+  if(fl){stateCard(fl.tag,`<small>${fl.tag}　${left(fl.arrUtc-nowUtc)}で到着</small><b>${fl.title}</b><ul class="notes">${fl.notes.map(n=>`<li>${typeof n==='string'?n:n.t}</li>`).join('')}</ul>`);return}
   if(nowUtc<t0){const r=rows[0];stateCard(`${isPrep(r)?'準備開始':r.tag}まで${left(t0-nowUtc).replace('あと','')}`,`<small>次の予定</small><b>${r.tag}　${r.date}</b><p>${isPrep(r)?'この日から、出発に向けて体内時計を少しずつ動かし始めます。':'この日から、今日やることがここに出ます。'}</p><button type="button" class="ghost" data-go="days">全日程を見る</button>`);return}
   const r0=currentRow();
   if(!r0||nowUtc>t1){stateCard('おかえりなさい',`<small>旅のあと</small><b>今回の予定はすべて終わりました</b><p>起床時刻をそろえて、起きたらすぐ外の光を。次の移動は「旅程」から入れます。</p><button type="button" class="calbtn" data-go="trip">次の旅程を入れる</button>`);return}
@@ -1265,7 +1314,7 @@ function rebuild(){
   rows=[];flights=[];
   let prevCity=null,stay=0;
   for(const g of(lastPlan&&lastPlan.groups||[]))for(const r of g.days){
-    if(r.flight){if(r.depUtc)flights.push({depUtc:r.depUtc,arrUtc:r.arrUtc,title:g.title.replace(/（.*?）$/,''),notes:r.notes});continue}
+    if(r.flight){if(r.depUtc)flights.push({depUtc:r.depUtc,arrUtc:r.arrUtc,tag:r.tag,title:g.title.replace(/（.*?）$/,''),notes:r.notes});continue}
     if(!r.iso)continue;
     const cn=r.city&&r.city.name;stay=cn===prevCity?stay+1:0;prevCity=cn;
     r._stay=stay;rows.push(r);
