@@ -1,0 +1,16 @@
+name = "jisa-hodoki-push"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+
+[vars]
+ALLOWED_ORIGINS = "https://retomoth-bit.github.io"
+VAPID_SUBJECT = "https://retomoth-bit.github.io/jisa-hodoki/"
+# VAPID_PUBLIC と VAPID_PRIVATE_JWK は secret で設定する（gen-vapid.mjs の出力）
+
+[triggers]
+crons = ["* * * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "jisa-hodoki"
+database_id = "REPLACE_WITH_D1_ID"

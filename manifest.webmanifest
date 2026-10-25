@@ -1,0 +1,15 @@
+{
+  "name": "時差ほどき",
+  "short_name": "時差ほどき",
+  "description": "移動や週末のずれによる時差ぼけを、光・食事・睡眠の時刻で整える",
+  "lang": "ja",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0C111D",
+  "theme_color": "#0C111D",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

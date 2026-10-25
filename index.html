@@ -4,6 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="description" content="海外移動・早朝出発・週末のずれによる時差ぼけを、光・食事・睡眠の時刻で整えるプランナー">
+<meta name="theme-color" content="#0C111D">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="時差ほどき">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font-size:14px}img{max-width:100%}[hidden]{display:none!important}</style>
 <title>時差ほどき</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -72,7 +80,11 @@ input[type=range]{padding:0;background:transparent;border:0;accent-color:var(--s
 .calbtn:disabled{opacity:.5;cursor:default}
 .calstatus{margin:0;font-size:12.5px;min-height:1em}
 .calstatus.err{color:var(--warn)}
-#calDest button{font-size:12.5px}
+.pushbox{display:grid;gap:10px}
+.guidebox{border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--bg);font-size:13px}
+.guidebox ol{margin:6px 0 0;padding-left:1.3em;display:grid;gap:2px}
+.linkbtn{font:inherit;font-size:12.5px;background:none;border:0;color:var(--muted);text-decoration:underline;cursor:pointer;justify-self:start;padding:0}
+.cal .ghost{justify-self:stretch}
 
 /* results */
 .out{display:grid;gap:20px;min-width:0}
@@ -204,12 +216,18 @@ input[type=range]{padding:0;background:transparent;border:0;accent-color:var(--s
 
       <fieldset class="cal">
         <legend>通知</legend>
-        <p class="hint" id="calInfo">「光を浴びる」「光を避ける」「就寝」を予定として入れる。カレンダーのリマインダーがスマホに通知される。</p>
-        <div class="seg" role="group" aria-label="取り込み先" id="calDest" hidden>
-          <button type="button" data-dest="ios" aria-pressed="true">iPhone・Mac</button>
-          <button type="button" data-dest="google" aria-pressed="false">Google</button>
-          <button type="button" data-dest="outlook" aria-pressed="false">Outlook</button>
+        <div id="pushBox" class="pushbox" hidden>
+          <p class="hint">「光を浴びる」「光を避ける」「就寝」の時刻に、スマホに通知が届く。</p>
+          <div id="iosGuide" class="guidebox" hidden>
+            <b>通知を受け取るには、まずホーム画面に追加</b>
+            <ol><li>画面下の共有ボタン（四角に上向き矢印）を押す</li><li>「ホーム画面に追加」を選ぶ</li><li>ホーム画面の「時差ほどき」から開き直す</li></ol>
+          </div>
+          <button type="button" id="pushBtn" class="calbtn" hidden>通知を受け取る</button>
+          <button type="button" id="installBtn" class="ghost" hidden>ホーム画面に追加</button>
+          <p class="calstatus" id="pushStatus" role="status"></p>
+          <button type="button" id="pushStop" class="linkbtn" hidden>通知を止める</button>
         </div>
+        <p class="hint" id="calInfo">「光を浴びる」「光を避ける」「就寝」を予定として入れる。カレンダーのリマインダーがスマホに通知される。</p>
         <button type="button" id="calBtn" class="calbtn">Googleカレンダーに登録</button>
         <p class="hint" id="calHow" hidden></p>
         <p class="calstatus" id="calStatus" role="status"></p>
@@ -689,8 +707,8 @@ function render(){
   document.getElementById('habitLegend').textContent=st.mode==='weekend'?'平日の睡眠':'普段の睡眠';
   document.getElementById('prepVal').textContent=st.prep+'日';
   document.getElementById('ePrepVal').textContent=st.ePrep+'日';
-  let p;try{p=st.mode==='intl'?planIntl(st):st.mode==='early'?planEarly(st):planWeekend(st)}catch(e){lastPlan=null;calRefresh();calStatus(`計算できません：${e.message}`,true);document.getElementById('out').innerHTML=`<p class="lead">入力を確認してください（${e.message}）</p>`;return}
-  lastPlan=p;calRefresh();
+  let p;try{p=st.mode==='intl'?planIntl(st):st.mode==='early'?planEarly(st):planWeekend(st)}catch(e){lastPlan=null;calRefresh();pushUI();calStatus(`計算できません：${e.message}`,true);document.getElementById('out').innerHTML=`<p class="lead">入力を確認してください（${e.message}）</p>`;return}
+  lastPlan=p;calRefresh();pushUI();pushResync();
   if(!eventsFor(p.groups).length&&!calBusy)calStatus(p.lead||'予定を作れる日がありません',true);
   else if($('calStatus').classList.contains('err')&&!calBusy)calStatus('');
   const ticks=[0,3,6,9,12,15,18,21,24].map(h=>`<span style="left:${h/24*100}%">${h}</span>`).join('');
@@ -722,18 +740,11 @@ function buildICS(ev){
     'BEGIN:VALARM','ACTION:DISPLAY',`DESCRIPTION:${icsEsc(e.summary.replace('時差ほどき｜',''))}`,`TRIGGER:-PT${e.rem}M`,'END:VALARM','END:VEVENT')});
   L.push('END:VCALENDAR');return L.map(icsFold).join('\r\n')+'\r\n';
 }
-const CAL_HOW={
-  ios:'保存したファイルを開き、「すべてを追加」。入れ先のカレンダーを選べる画面ではそこで選ぶ。選べない場合は先に iPhone の「設定 → カレンダー → デフォルトカレンダー」を入れたいカレンダーに変えておく。',
-  google:'Googleカレンダーのスマホアプリには取り込み機能がない。iPhoneなら「設定 → カレンダー → アカウント」でGoogleアカウントを追加し、ファイルを開いて入れ先にGoogleのカレンダーを選ぶ。パソコンなら calendar.google.com の「設定 → インポートとエクスポート」でファイルと入れ先を選ぶ。専用のカレンダー（例：時差ほどき）を先に作っておくと、あとでまとめて消せる。',
-  outlook:'パソコンのOutlookでファイルを開くか、Outlook.com の「カレンダー → カレンダーを追加 → ファイルからアップロード」でファイルと入れ先を選ぶ。'};
-let calDest='ios';try{calDest=localStorage.getItem('jisa-cal-dest')||'ios'}catch(e){}
-function setDest(d){calDest=CAL_HOW[d]?d:'ios';try{localStorage.setItem('jisa-cal-dest',calDest)}catch(e){}
-  document.querySelectorAll('[data-dest]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.dest===calDest));$('calHow').textContent=CAL_HOW[calDest]}
 function downloadICS(ev){
   const url=URL.createObjectURL(new Blob([buildICS(ev)],{type:'text/calendar;charset=utf-8'}));
   const a=document.createElement('a');a.href=url;a.download='jisa-hodoki.ics';document.body.appendChild(a);a.click();a.remove();
   setTimeout(()=>URL.revokeObjectURL(url),4000);
-  calStatus(`${ev.length}件の予定を保存しました。上の手順で取り込んでください。`);
+  calStatus(`${ev.length}件の予定を保存しました。上の説明のとおりに取り込んでください。`);
 }
 function getMcp(){if(!mcpP)mcpP=(window.claude&&window.claude.use)?window.claude.use('mcp').catch(()=>null):Promise.resolve(null);return mcpP}
 function eventsFor(groups){
@@ -801,6 +812,74 @@ async function calAdd(){
   calStatus(`${ev.length}件をGoogleカレンダーに登録しました。各予定のリマインダーが通知になります。`);
 }
 
+/* ---------- 通知（ホーム画面版） ---------- */
+const PUSH_API='';      // デプロイ後に Worker のURLを入れる（例: https://jisa-hodoki-push.xxxx.workers.dev）
+const VAPID_PUBLIC='';  // gen-vapid.mjs が出す VAPID_PUBLIC
+const UA=navigator.userAgent||'';
+const IS_IOS=/iPhone|iPad|iPod/.test(UA)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+const IS_ANDROID=/Android/.test(UA);
+const STANDALONE=(window.matchMedia&&matchMedia('(display-mode: standalone)').matches)||navigator.standalone===true;
+const PUSH_CAPABLE=()=>!!(PUSH_API&&VAPID_PUBLIC&&'serviceWorker' in navigator&&'PushManager' in window&&'Notification' in window);
+let pushId=null,pushTimer=null,deferredInstall=null;
+try{pushId=localStorage.getItem('jisa-push-id')}catch(e){}
+function pushEvents(groups){
+  return eventsFor(groups).map(e=>{const s=e.startTime.slice(11,16),t=e.endTime.slice(11,16),kind=e.summary.replace('時差ほどき｜','');
+    const body=kind==='就寝'?`${s}に就寝。照明を落として準備を`:kind==='光を避ける'?`${s}–${t}。サングラスか、照明を暗めに`
+      :kind==='照明で光を浴びる'?`${s}–${t}。外は暗いので照明を全開に`:`${s}–${t}。外に出て光を浴びる`;
+    return{at:localToUtc(e.startTime,e.timeZone)-e.rem*6e4,title:kind,body,tag:kind}}).filter(x=>x.at>Date.now()-6e4);
+}
+function u8(b64){const s=b64.replace(/-/g,'+').replace(/_/g,'/')+'==='.slice((b64.length+3)%4);return Uint8Array.from(atob(s),c=>c.charCodeAt(0))}
+function pushMsg(t,err){const el=$('pushStatus');el.textContent=t;el.classList.toggle('err',!!err)}
+async function sendSchedule(sub){
+  const events=pushEvents(lastPlan&&lastPlan.groups);
+  const r=await fetch(PUSH_API+'/subscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:pushId,sub:sub.toJSON(),events})});
+  if(!r.ok)throw new Error('サーバーが受け付けませんでした（'+r.status+'）');
+  const j=await r.json();pushId=j.id;try{localStorage.setItem('jisa-push-id',pushId)}catch(e){}
+  return j.count;
+}
+async function pushStart(){
+  try{
+    if(Notification.permission==='denied'){pushMsg('通知が許可されていません。端末の設定で「時差ほどき」の通知をオンにしてください',true);return}
+    const perm=await Notification.requestPermission();
+    if(perm!=='granted'){pushMsg('通知が許可されませんでした。もう一度押すと確認が出ます',true);return}
+    const reg=await navigator.serviceWorker.ready;
+    const sub=await reg.pushManager.getSubscription()||await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:u8(VAPID_PUBLIC)});
+    pushMsg('予約しています…');
+    const n=await sendSchedule(sub);
+    pushMsg(n?`通知を${n}件予約しました。旅程を変えると自動で入れ直します`:'これから先に通知する予定がありません',!n);
+  }catch(e){pushMsg('通知を予約できませんでした：'+e.message,true)}
+  pushUI();
+}
+async function pushStop(){
+  try{const reg=await navigator.serviceWorker.ready;const sub=await reg.pushManager.getSubscription();if(sub)await sub.unsubscribe();
+    if(pushId)await fetch(PUSH_API+'/unsubscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:pushId})});
+  }catch(e){}
+  pushId=null;try{localStorage.removeItem('jisa-push-id')}catch(e){}
+  pushMsg('通知を止めました');pushUI();
+}
+function pushResync(){
+  if(!pushId||!PUSH_CAPABLE()||Notification.permission!=='granted')return;
+  clearTimeout(pushTimer);
+  pushTimer=setTimeout(async()=>{try{const reg=await navigator.serviceWorker.ready;const sub=await reg.pushManager.getSubscription();if(!sub)return;
+    const n=await sendSchedule(sub);pushMsg(`通知を${n}件に入れ直しました`)}catch(e){pushMsg('通知の入れ直しに失敗しました。通信を確かめてもう一度押してください',true)}},2500);
+}
+function pushUI(){
+  if(IN_CLAUDE||!PUSH_API){$('pushBox').hidden=true;return}
+  $('pushBox').hidden=false;
+  const iosNeedsInstall=IS_IOS&&!STANDALONE;
+  $('iosGuide').hidden=!iosNeedsInstall;
+  const can=PUSH_CAPABLE()&&!iosNeedsInstall;
+  const n=pushEvents(lastPlan&&lastPlan.groups).length;
+  $('pushBtn').hidden=!can;$('pushBtn').disabled=!n;
+  $('pushBtn').textContent=pushId?`通知を入れ直す（${n}件）`:`通知を受け取る（${n}件）`;
+  $('pushStop').hidden=!(can&&pushId);
+  $('installBtn').hidden=!(deferredInstall&&!STANDALONE);
+  if(!can&&!iosNeedsInstall)pushMsg('このブラウザは通知に対応していません。下のカレンダー用ファイルを使ってください',true);
+}
+const CAL_HINT=IS_IOS?'保存したファイルを開いて「すべてを追加」。iPhoneのカレンダーに入る。'
+  :IS_ANDROID?'保存したファイルを開き、Googleカレンダーで追加する。'
+  :'カレンダーアプリで開くか、Googleカレンダーなら「設定 → インポートとエクスポート」で取り込む。';
+
 /* ---------- state ---------- */
 const $=id=>document.getElementById(id);
 const FIELDS=['hrMin','bed','wake','origin','prep','eDate','eWake','ePrep','weBed','weWake'];
@@ -851,9 +930,15 @@ function init(){
     legs.push({to:$('origin').value,date:plusDays(l.date,4),time:'19:00',hours:estHours(l.to,$('origin').value)});renderLegs();render()});
   $('f').addEventListener('input',render);$('f').addEventListener('change',render);$('f').addEventListener('submit',e=>e.preventDefault());
   $('calBtn').addEventListener('click',calAdd);
-  if(!IN_CLAUDE){$('calInfo').textContent='「光を浴びる」「光を避ける」「就寝」を通知付きの予定ファイル（.ics）にする。取り込み先を選ぶと手順が出る。';
-    $('calDest').hidden=false;$('calHow').hidden=false;setDest(calDest);
-    $('calDest').addEventListener('click',e=>{const b=e.target.closest('[data-dest]');if(b)setDest(b.dataset.dest)})}
+  if(!IN_CLAUDE){
+    $('calInfo').textContent=PUSH_API?'カレンダーにも入れたい場合は、予定ファイルを保存する。':'「光を浴びる」「光を避ける」「就寝」を通知付きの予定ファイルにする。';
+    if(PUSH_API)$('calBtn').className='ghost';
+    $('calHow').textContent=CAL_HINT;$('calHow').hidden=false;
+    if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+    window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstall=e;pushUI()});
+    $('installBtn').addEventListener('click',async()=>{if(!deferredInstall)return;deferredInstall.prompt();try{await deferredInstall.userChoice}catch(e){}deferredInstall=null;pushUI()});
+    $('pushBtn').addEventListener('click',pushStart);$('pushStop').addEventListener('click',pushStop);
+  }
   render();
 }
 init();
