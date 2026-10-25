@@ -72,6 +72,7 @@ input[type=range]{padding:0;background:transparent;border:0;accent-color:var(--s
 .calbtn:disabled{opacity:.5;cursor:default}
 .calstatus{margin:0;font-size:12.5px;min-height:1em}
 .calstatus.err{color:var(--warn)}
+#calDest button{font-size:12.5px}
 
 /* results */
 .out{display:grid;gap:20px;min-width:0}
@@ -203,8 +204,14 @@ input[type=range]{padding:0;background:transparent;border:0;accent-color:var(--s
 
       <fieldset class="cal">
         <legend>通知</legend>
-        <button type="button" id="calBtn" class="calbtn">Googleカレンダーに登録</button>
         <p class="hint" id="calInfo">「光を浴びる」「光を避ける」「就寝」を予定として入れる。カレンダーのリマインダーがスマホに通知される。</p>
+        <div class="seg" role="group" aria-label="取り込み先" id="calDest" hidden>
+          <button type="button" data-dest="ios" aria-pressed="true">iPhone・Mac</button>
+          <button type="button" data-dest="google" aria-pressed="false">Google</button>
+          <button type="button" data-dest="outlook" aria-pressed="false">Outlook</button>
+        </div>
+        <button type="button" id="calBtn" class="calbtn">Googleカレンダーに登録</button>
+        <p class="hint" id="calHow" hidden></p>
         <p class="calstatus" id="calStatus" role="status"></p>
       </fieldset>
     </form>
@@ -715,11 +722,18 @@ function buildICS(ev){
     'BEGIN:VALARM','ACTION:DISPLAY',`DESCRIPTION:${icsEsc(e.summary.replace('時差ほどき｜',''))}`,`TRIGGER:-PT${e.rem}M`,'END:VALARM','END:VEVENT')});
   L.push('END:VCALENDAR');return L.map(icsFold).join('\r\n')+'\r\n';
 }
+const CAL_HOW={
+  ios:'保存したファイルを開き、「すべてを追加」。入れ先のカレンダーを選べる画面ではそこで選ぶ。選べない場合は先に iPhone の「設定 → カレンダー → デフォルトカレンダー」を入れたいカレンダーに変えておく。',
+  google:'Googleカレンダーのスマホアプリには取り込み機能がない。iPhoneなら「設定 → カレンダー → アカウント」でGoogleアカウントを追加し、ファイルを開いて入れ先にGoogleのカレンダーを選ぶ。パソコンなら calendar.google.com の「設定 → インポートとエクスポート」でファイルと入れ先を選ぶ。専用のカレンダー（例：時差ほどき）を先に作っておくと、あとでまとめて消せる。',
+  outlook:'パソコンのOutlookでファイルを開くか、Outlook.com の「カレンダー → カレンダーを追加 → ファイルからアップロード」でファイルと入れ先を選ぶ。'};
+let calDest='ios';try{calDest=localStorage.getItem('jisa-cal-dest')||'ios'}catch(e){}
+function setDest(d){calDest=CAL_HOW[d]?d:'ios';try{localStorage.setItem('jisa-cal-dest',calDest)}catch(e){}
+  document.querySelectorAll('[data-dest]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.dest===calDest));$('calHow').textContent=CAL_HOW[calDest]}
 function downloadICS(ev){
   const url=URL.createObjectURL(new Blob([buildICS(ev)],{type:'text/calendar;charset=utf-8'}));
   const a=document.createElement('a');a.href=url;a.download='jisa-hodoki.ics';document.body.appendChild(a);a.click();a.remove();
   setTimeout(()=>URL.revokeObjectURL(url),4000);
-  calStatus(`${ev.length}件の予定を保存しました。ファイルを開くとカレンダーに取り込めます（iPhoneはタップして「すべてを追加」、Googleカレンダーはパソコンの設定 → インポート）。`);
+  calStatus(`${ev.length}件の予定を保存しました。下の手順で取り込んでください。`);
 }
 function getMcp(){if(!mcpP)mcpP=(window.claude&&window.claude.use)?window.claude.use('mcp').catch(()=>null):Promise.resolve(null);return mcpP}
 function eventsFor(groups){
@@ -746,7 +760,7 @@ function calRefresh(){
   if(calBusy)return;
   const ev=eventsFor(lastPlan&&lastPlan.groups);const sig=sigOf(ev);
   $('calBtn').disabled=!ev.length;
-  if(!IN_CLAUDE){$('calBtn').textContent=ev.length?`カレンダーに追加（${ev.length}件）`:'追加する予定がありません';return}
+  if(!IN_CLAUDE){$('calBtn').textContent=ev.length?`予定ファイルを保存（${ev.length}件）`:'追加する予定がありません';return}
   $('calBtn').textContent=!ev.length?'登録する予定がありません':sig===calDone?'登録済み（もう一度押すと重複）':resume.sig===sig&&resume.at?`続きから登録（残り${ev.length-resume.at}件）`:`Googleカレンダーに登録（${ev.length}件）`;
   if(sig!==resume.sig)calStatus('');
 }
@@ -825,8 +839,8 @@ function init(){
   renderLegs();
   document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{mode=b.dataset.mode;render()}));
   const onLeg=e=>{const el=e.target,box=el.closest('.leg');if(!box||!el.dataset.k)return;
-    const i=+box.dataset.i;legs[i][el.dataset.k]=el.dataset.k==='hours'?+el.value:el.value;
-    if(el.dataset.k==='to'){legs[i].hours=estHours(legFrom(i),legs[i].to);$(`leg${i}_hours`).value=legs[i].hours;syncLegFrom()}};
+    const i=+box.dataset.i;legs[i][el.dataset.k]=el.dataset.k==='hours'?+el.value:el.value;if(el.dataset.k==='hours')legs[i].manual=true;
+    if(el.dataset.k==='to'){if(!legs[i].manual)legs[i].hours=estHours(legFrom(i),legs[i].to);$(`leg${i}_hours`).value=legs[i].hours;syncLegFrom()}};
   $('legs').addEventListener('input',onLeg);$('legs').addEventListener('change',e=>{onLeg(e);render()});
   $('legs').addEventListener('click',e=>{const b=e.target.closest('[data-del]');if(!b)return;legs.splice(+b.dataset.del,1);renderLegs();render()});
   $('addLeg').addEventListener('click',()=>{const l=legs[legs.length-1];const to=['ロンドン','パリ','ニューヨーク'].find(n=>n!==l.to);
@@ -835,7 +849,9 @@ function init(){
     legs.push({to:$('origin').value,date:plusDays(l.date,4),time:'19:00',hours:estHours(l.to,$('origin').value)});renderLegs();render()});
   $('f').addEventListener('input',render);$('f').addEventListener('change',render);$('f').addEventListener('submit',e=>e.preventDefault());
   $('calBtn').addEventListener('click',calAdd);
-  if(!IN_CLAUDE)$('calInfo').textContent='「光を浴びる」「光を避ける」「就寝」を通知付きの予定ファイル（.ics）で保存。iPhone・Googleカレンダー・Outlookに取り込める。';
+  if(!IN_CLAUDE){$('calInfo').textContent='「光を浴びる」「光を避ける」「就寝」を通知付きの予定ファイル（.ics）にする。取り込み先を選ぶと手順が出る。';
+    $('calDest').hidden=false;$('calHow').hidden=false;setDest(calDest);
+    $('calDest').addEventListener('click',e=>{const b=e.target.closest('[data-dest]');if(b)setDest(b.dataset.dest)})}
   render();
 }
 init();
