@@ -85,6 +85,9 @@ async function sendDue(env) {
     try {
       const res = await webPush({ endpoint: r.endpoint, p256dh: r.p256dh, auth: r.auth },
         JSON.stringify({ title: r.title, body: r.body, tag: r.tag || undefined }), vapid);
+      // 送り先（FCM など）の応答を残す。2xx 以外は本文も出して原因を追えるようにする
+      if (res.ok) console.log('push ok', r.id, res.status);
+      else console.log('push failed', r.id, res.status, (await res.text()).slice(0, 300));
       if (res.status === 404 || res.status === 410) gone.add(r.sub_id);
       done.push(r.id);
     } catch (err) {
