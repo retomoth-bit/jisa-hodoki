@@ -17,7 +17,7 @@
 <title>時差ほどき -Untangle the Time Difference-</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Shippori+Mincho+B1:wght@600;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;500&family=Shippori+Mincho:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Shippori+Mincho+B1:wght@600;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
 <style>
 /* Layout: 左に入力の操作盤、右に「1日=24時間の帯」を日ごとに積んだ時刻表。スマホでは縦一列 */
 :root{
@@ -239,6 +239,110 @@ input[type=range]{padding:0;background:transparent;border:0;accent-color:var(--s
 .brand-mark{width:30px;height:30px;margin:0 9px 0 0;display:block}
 .t-brand small{padding-left:39px}
 
+/* ---------- 試作：石膏と紙の質感 ---------- */
+:root{--bg:#0A0A09;--surface:#141413;--ink:#ECE8E0;--muted:#8A8780;--line:#262523;--track:#1A1A18;
+  --t-bg:#0A0A09;--t-sf:#141413;--t-sf2:#141413;--t-ink:#ECE8E0;--t-mut:#8A8780;--t-line:#262523;--t-sun:#ECE8E0;--t-sunlo:#ECE8E0;--t-ok:#2F4A35;--t-warn:#8A2E18;
+  --paper:#ADAAA4;--paper-ink:#161512;--paper-mut:#3F3D38;--shu:#B23A1F;
+  --grain:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='2.2' numOctaves='1' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  --fiber:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.012 .09' numOctaves='2' seed='4'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .10 -.02'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23f)'/%3E%3C/svg%3E");
+}
+body{background:radial-gradient(120% 60% at 50% 0%,#151514 0%,#0A0A09 60%) fixed,#0A0A09}
+.t-top{background:#0A0A09}
+.t-brand{font-family:var(--f-display);font-weight:600}
+/* 紙：折り目なし。ごく細かい粒子と、左上からの光だけ */
+.paper,.t-g,.t-next,.t-state,.t-in{position:relative;background-color:var(--paper);color:var(--paper-ink);border:0;border-radius:3px;
+  background-image:radial-gradient(130% 110% at 20% 0%,rgba(255,255,255,.16),rgba(255,255,255,0) 55%,rgba(0,0,0,.10) 100%),var(--grain);
+  background-size:auto,180px 180px;
+  box-shadow:0 18px 30px -18px rgba(0,0,0,.95),0 1px 2px rgba(0,0,0,.45);
+  transition:background-color .6s,filter .6s}
+.t-g{border-radius:2px}
+.t-g small,.t-next small,.t-state small,.t-in h4,.t-in label,.t-in .base,.t-q .lab,.t-g .sub,.t-next .left,.t-state p{color:var(--paper-mut)}
+.t-g b{font-family:var(--f-display);font-weight:700;font-size:21px;letter-spacing:.02em}
+.t-next .what b{font-family:var(--f-display);font-size:22px}
+.t-next .what span{color:var(--paper-ink);opacity:.75}
+.t-next.now{outline:0;box-shadow:inset 3px 0 0 var(--shu),0 14px 24px -14px rgba(0,0,0,.9),0 2px 3px rgba(0,0,0,.5)}
+.t-bar,.t-pills span{background:rgba(0,0,0,.18)!important;border-radius:0;height:3px}
+.t-in input{background:rgba(0,0,0,.10);border:1px solid rgba(0,0,0,.22);color:var(--paper-ink);border-radius:2px}
+.t-in input::placeholder{color:var(--paper-mut)}
+.t-seg button{background:rgba(0,0,0,.08);border:1px solid rgba(0,0,0,.22);color:var(--paper-mut);border-radius:2px}
+.t-seg button[aria-pressed="true"]{background:var(--paper-ink);color:var(--paper);border-color:var(--paper-ink)}
+.t-in .opt{border-color:rgba(0,0,0,.25);color:var(--paper-mut)}
+.t-alert{background:transparent;border:0;border-left:2px solid var(--shu);border-radius:0;color:#D9B3A8;padding:4px 12px}
+.t-legend{color:#6E6B65}
+.t-row{border-top-color:#1F1E1C}
+.t-row i{border-radius:1px;width:8px;height:8px;outline:1px solid #2A2926}
+.t-row em{color:#C9876F}
+.t-list h4,.t-clim{color:#6E6B65}
+.t-tabs{background:#0A0A09;border-top-color:#1C1B19}
+.t-tabs button[aria-current="page"]::before{background:var(--shu);width:6px;height:6px;border-radius:50%}
+.t-scrub{border-color:#262523}
+.t-scrub input{accent-color:#ECE8E0}
+/* 光を避ける時間帯：紙が影に入る */
+#app.dusk .t-g,#app.dusk .t-next,#app.dusk .t-state,#app.dusk .t-in{background-color:#6F6D68;filter:brightness(.82)}
+#app.dusk{--paper-mut:#24231F}
+.z-grow{display:grid;justify-items:center;gap:2px;margin-top:-6px;font-size:11px;color:#8A8780;letter-spacing:.06em}
+.z-grow b{font-family:var(--f-display);font-weight:600;font-size:13px;color:#C9C5BD;letter-spacing:.08em}
+
+/* 和紙の写真が届くまで：紙をやめて、暗い面に細い線だけ */
+.paper,.t-g,.t-next,.t-state,.t-in{background:#121211!important;color:#ECE8E0;box-shadow:none;border:1px solid #242321;border-radius:4px}
+.t-g small,.t-next small,.t-state small,.t-in h4,.t-in label,.t-in .base,.t-q .lab,.t-g .sub,.t-next .left,.t-state p{color:#8A8780}
+.t-g b,.t-next .what span{color:#ECE8E0!important}
+.t-bar i{background:#ECE8E0!important}
+.t-in input,.t-seg button{background:#0A0A09;border-color:#2A2927;color:#ECE8E0}
+.t-seg button[aria-pressed="true"]{background:#ECE8E0;color:#0A0A09}
+#app.dusk .t-g,#app.dusk .t-next,#app.dusk .t-state,#app.dusk .t-in{filter:none}
+
+/* 文字：欧文と数字は Garamond 系、和文は明朝 */
+:root{--f-body:"EB Garamond","Shippori Mincho","Hiragino Mincho ProN","Yu Mincho",serif;
+  --f-display:"EB Garamond","Shippori Mincho","Hiragino Mincho ProN","Yu Mincho",serif;
+  --f-mono:"EB Garamond","Shippori Mincho",serif}
+body,#app,button,input,select{font-family:var(--f-body);font-feature-settings:"lnum" 1,"tnum" 1;font-variant-numeric:lining-nums tabular-nums}
+body{font-size:15.5px;letter-spacing:.02em}
+.t-brand{font-weight:400;letter-spacing:.12em;font-size:18px}
+.t-brand small{font-family:var(--f-body);font-style:normal;font-size:11px;letter-spacing:.04em}
+.t-g b,.t-next .what b{font-weight:500}
+.t-row .tm,.t-next .what span,.t-in input{font-family:var(--f-body);font-size:15px}
+.t-g small,.t-next small,.t-list h4,.t-in h4{letter-spacing:.08em}
+
+.t-dial svg{max-width:360px}
+
+/* ---------- 旅程・全日程も同じ見た目に ---------- */
+:root{--sleep:#6F8FC0;--sun:#E6BE5A;--sunink:#E6BE5A;--avoid:#86837C;--meal:#8FB59A;--travel:#4A4945;--warn:#D9876F}
+.panel,.summary,.itin,.sched,.guide section,.refs{background:#121211;border:1px solid #242321;border-radius:4px;box-shadow:none}
+.summary{background:#242321}
+.summary div{background:#121211}
+.summary strong{font-family:var(--f-display);font-weight:500}
+.modes,.seg{background:#0A0A09;border:1px solid #242321}
+.modes button[aria-pressed="true"],.seg button[aria-pressed="true"]{background:#ECE8E0;color:#0A0A09;box-shadow:none}
+input,select{background:#0A0A09;border-color:#2A2927;border-radius:3px}
+.leg{background:#0A0A09;border-color:#242321;border-radius:3px}
+.ghost{border-color:#3A3935;border-radius:3px}
+.calbtn{background:#ECE8E0;color:#0A0A09;border-radius:3px}
+.lead{color:#C9C5BD}
+/* 帯：細めに、色は今日の円と同じ */
+.track{height:18px;background:#161615;background-image:repeating-linear-gradient(90deg,#222120 0 1px,transparent 1px 12.5%);border-radius:2px}
+.track .sl{background:var(--sleep);opacity:.85}
+.track .sun{background:var(--sun)}
+.track .av{background:repeating-linear-gradient(135deg,#86837C 0 1px,transparent 1px 3.5px)}
+.track .nap{background:var(--sleep);opacity:.45}
+.track .tr{top:7px;bottom:7px}
+.track .cbt,.sw-cbt,.legend span:has(.sw-cbt){display:none!important}
+.track .arr{background:#ECE8E0;width:1.5px}
+.lane b{color:var(--meal);font-weight:500}
+.lane b::before{background:var(--meal)}
+.sw-sl{background:var(--sleep)} .sw-sun{background:var(--sun)}
+.sw-av{background:repeating-linear-gradient(135deg,#86837C 0 1px,transparent 1px 3.5px);outline:0}
+.sw-meal{background:var(--meal)}
+.det .s .t{color:var(--sun)}
+.det .b .t{color:#D99AAE}
+.notes li::marker{color:#8A8780}
+.notes .w{color:var(--warn)}
+.phase{color:#8A8780;border-top-color:#242321}
+.day{border-bottom-color:#242321}
+.itin th{color:#8A8780}
+.itin td,.itin th{border-bottom-color:#242321}
+.guide h3,.refs h3{font-family:var(--f-display);font-weight:500}
+
 </style>
 
 </head>
@@ -252,7 +356,7 @@ input[type=range]{padding:0;background:transparent;border:0;accent-color:var(--s
       <div class="t-gauges"><section class="t-g" id="gClock"></section><section class="t-g" id="gRec"></section></div>
       <div id="tAlert"></div>
       <div class="t-dial" id="tDial"></div>
-      <div class="t-legend"><span><i style="background:#F2A944"></i>光を浴びる</span><span><i style="background:repeating-linear-gradient(45deg,#5C6680 0 2px,transparent 2px 4px)"></i>光を避ける</span><span><i style="background:#3B4C8C"></i>睡眠</span><span><i style="background:#E8ECF3;width:6px;border-radius:50%"></i>体温最低点（推定）</span><span><i style="border:1px solid #8E99AD;width:6px;height:6px;border-radius:50%;background:none"></i>予定</span></div>
+      <div class="t-legend"><span><i style="background:#E6BE5A;height:2px"></i>光を浴びる</span><span><i style="background:repeating-linear-gradient(45deg,#86837C 0 1px,transparent 1px 3px);height:5px"></i>光を避ける</span><span><i style="background:#6F8FC0;height:2px"></i>睡眠</span><span><i style="background:#8FB59A;width:5px;height:5px;border-radius:50%"></i>食事</span><span><i style="background:#C2411F;width:7px;height:7px;border-radius:50%"></i>現在</span></div>
       <section class="t-next" id="tNext"></section>
       <section class="t-list" id="tList"></section>
       <section class="t-in">
@@ -365,7 +469,7 @@ input[type=range]{padding:0;background:transparent;border:0;accent-color:var(--s
     <div class="guide">
     <section>
       <h3>軸は「体温最低点」</h3>
-      <p>体内時計の位置は、深部体温が一番下がる時刻で表せる。目安は目覚ましなしで起きる時刻の約2時間前（睡眠7時間以下）、約3時間前（それより長い）。睡眠中に心拍が最も下がる時刻がわかれば、それを使う。この点より<b>後</b>に浴びた光は時計を進め、<b>前</b>に浴びた光は遅らせる。帯の上の ▼ がその位置。</p>
+      <p>体内時計の位置は、深部体温が一番下がる時刻で表せる。目安は目覚ましなしで起きる時刻の約2時間前（睡眠7時間以下）、約3時間前（それより長い）。睡眠中に心拍が最も下がる時刻がわかれば、それを使う。この点より<b>後</b>に浴びた光は時計を進め、<b>前</b>に浴びた光は遅らせる。</p>
     </section>
     <section>
       <h3>光</h3>
@@ -791,7 +895,7 @@ function planIntl(st){
       if(isDep)blank.push([nxt.depMin,M]);
       if(!synced&&R>=180){nap=lin(W+360,W+380);notes.push('日中に眠ければ13時台に20分だけ仮眠。夕方以降は寝ない')}
       if(R>=120)notes.push({w:1,t:'体のずれが2時間以上残る日。大事な交渉・発表・運転はできれば避ける'});
-      if(!synced)notes.push(`体はまだ${hrs(R)}${dir>0?'遅れて':'先に'}いる（体温最低点 ${fmt(cbt)}）`);
+      if(!synced)notes.push(`体はまだ${hrs(R)}${dir>0?'遅れて':'先に'}いる`);
       else if(!isDep)notes.push(last?'同調完了。以後は普段どおりの起床と朝の光で維持':`${name}に同調。出発まで起床時刻と朝の光をそろえておく`);
       if(isArr&&!synced)notes.push(dir>0?`寝付けなくても${name}の時刻に横になって暗くする`:'夕方の眠気は外を歩いてやり過ごす');
       if(k===(morningArr?-1:1)&&!synced)notes.push(`早く目が覚めても間食は控え、${fmt(W+30)}の朝食を待つ。コーヒーも朝食と一緒に。空腹でなくても少し食べる`);
@@ -908,7 +1012,7 @@ function dayHTML(r){
   if(len(r.seek))det.push(`<span class="s"><em>光を浴びる</em><span class="t">${ivs(r.seek)}</span>${r.lightMin?`<em class="dose">晴${r.lightMin[0]}分・曇${r.lightMin[1]}分</em>`:''}</span>`);
   if(len(r.avoid))det.push(`<span><em>光を避ける</em><span class="t">${ivs(r.avoid)}</span></span>`);
   if(len(r.ex||[]))det.push(`<span><em>運動・早歩き</em><span class="t">${ivs(r.ex)}</span></span>`);
-  if(r.bath!=null)det.push(`<span><em>入浴</em><span class="t">${fmt(r.bath)}</span></span>`);
+  if(r.bath!=null)det.push(`<span class="b"><em>入浴</em><span class="t">${fmt(r.bath)}</span></span>`);
   if(r.meals.length)det.push(`<span><em>食事</em><span class="t">${r.meals.map(m=>fmt(m.t)).join(' / ')}</span></span>`);
   if(!r.flight&&r.caff)det.push(`<span><em>カフェイン</em><span class="t">${r.caff}</span></span>`);
   const cur=r.cur?`<div class="curlab">今</div>${track({sleep:r.cur},'cur')}<div class="curlab">提案</div>`:'';
@@ -1167,8 +1271,8 @@ init();
 /* ---------- 今日：朝の答えと数字で、体内時計の現在地と回復度を出し、今日の予定を組み直す ---------- */
 (function(){
 const DEMO=IN_CLAUDE||/[?&]demo\b/.test(location.search);
-const KIND={sleep:{n:'就寝',c:'#3B4C8C'},seek:{n:'外で光を浴びる',c:'#F2A944'},seekIn:{n:'照明で光を浴びる',c:'#F6C27A'},avoid:{n:'光を避ける',c:'#5C6680'},
-  meal:{n:'食事',c:'#5DBE85'},ex:{n:'運動・早歩き',c:'#8FB3FF'},walk:{n:'軽い散歩',c:'#8FB3FF'},bath:{n:'入浴',c:'#B79BE0'},arr:{n:'到着',c:'#E8ECF3'},dep:{n:'出発',c:'#E8ECF3'}};
+const KIND={sleep:{n:'就寝',c:'#6F8FC0'},seek:{n:'外で光を浴びる',c:'#E6BE5A'},seekIn:{n:'照明で光を浴びる',c:'#B8994C'},avoid:{n:'光を避ける',c:'repeating-linear-gradient(45deg,#86837C 0 1px,transparent 1px 2.5px)'},
+  meal:{n:'食事',c:'#8FB59A'},ex:{n:'運動・早歩き',c:'#8A8780'},walk:{n:'軽い散歩',c:'#8A8780'},bath:{n:'入浴',c:'#D99AAE'},arr:{n:'到着',c:'#E8ECF3'},dep:{n:'出発',c:'#E8ECF3'}};
 const TIP={seekIn:'外は暗い時間。照明を全開に。光療法の機器があれば使う。',
   avoid:'サングラスか、照明を暖色で暗めに。明るい店に寄らない。',meal:'空腹でなくても、この時刻に少し食べる。内臓の時計を合わせる。',ex:'早歩きでもよい。時計を動かす向きに効く時間帯。',
   walk:'今日は回復を優先。息が上がらない程度の散歩で、時計を動かす時間帯に体を動かす。',bath:'40〜42℃の湯に10分。湯船がなければ熱めのシャワーを10分。',sleep:'照明を落として横になる。眠れなくても暗くして過ごす。'};
@@ -1256,20 +1360,54 @@ function buildItems(r){
 }
 function arc(c,R,s,e){const a=m=>(m/M)*2*Math.PI-Math.PI/2;const p=m=>[c+R*Math.cos(a(m)),c+R*Math.sin(a(m))];const[x1,y1]=p(s),[x2,y2]=p(e);return`M${x1.toFixed(2)} ${y1.toFixed(2)} A${R} ${R} 0 ${e-s>720?1:0} 1 ${x2.toFixed(2)} ${y2.toFixed(2)}`}
 function dial(r,nowMin,est){
-  const W=300,c=150,R=106;let h=`<svg viewBox="0 0 ${W} ${W}" role="img" aria-label="今日の24時間"><defs><pattern id="hatch" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="2" height="5" fill="#5C6680"/></pattern><filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3"/></filter></defs>`;
-  h+=`<circle cx="${c}" cy="${c}" r="${R}" fill="none" stroke="#1A2133" stroke-width="20"/>`;
-  for(let i=0;i<24;i++){const a=i/24*2*Math.PI-Math.PI/2,r1=R+13,r2=R+(i%6?16:20);h+=`<line x1="${c+r1*Math.cos(a)}" y1="${c+r1*Math.sin(a)}" x2="${c+r2*Math.cos(a)}" y2="${c+r2*Math.sin(a)}" stroke="#2B3550" stroke-width="${i%6?1:1.5}"/>`}
-  [['0',0],['6',360],['12',720],['18',1080]].forEach(([t,m])=>{const a=m/M*2*Math.PI-Math.PI/2,rr=R+31;h+=`<text x="${c+rr*Math.cos(a)}" y="${c+rr*Math.sin(a)+3.5}" text-anchor="middle">${t}</text>`});
-  const seg=(list,st,w,x='')=>list.forEach(([s,e])=>{h+=`<path d="${arc(c,R,s,Math.min(e,s+M-0.5))}" fill="none" stroke="${st}" stroke-width="${w}" ${x}/>`});
-  seg(r.sleep,'#3B4C8C',20);seg(r.avoid,'url(#hatch)',20);
-  seg(r.seekOut||r.seek,'#F2A944',28,'filter="url(#glow)" opacity=".35"');seg(r.seekOut||r.seek,'#F2A944',20);seg(r.seekIn||[],'#F6C27A',20);
-  if(r.blank)seg(r.blank,'#0B0F1A',21,'opacity=".75"');
-  const mark=(m,fill,stroke)=>{const a=mod(m)/M*2*Math.PI-Math.PI/2,rr=R+12;h+=`<circle cx="${c+rr*Math.cos(a)}" cy="${c+rr*Math.sin(a)}" r="3.4" fill="${fill}" stroke="${stroke}" stroke-width="1.2"/>`};
-  if(est.dMeas!=null&&Math.abs(est.d-est.dModel)>=10)mark(est.cbtModel,'none','#8E99AD');mark(est.cbtEst,'#E8ECF3','#E8ECF3');
-  const a=nowMin/M*2*Math.PI-Math.PI/2;h+=`<line x1="${c+(R-22)*Math.cos(a)}" y1="${c+(R-22)*Math.sin(a)}" x2="${c+(R+14)*Math.cos(a)}" y2="${c+(R+14)*Math.sin(a)}" stroke="#E8ECF3" stroke-width="2" stroke-linecap="round"/><circle cx="${c+(R-22)*Math.cos(a)}" cy="${c+(R-22)*Math.sin(a)}" r="3" fill="#E8ECF3"/>`;
-  h+=`<text x="${c}" y="${c+4}" text-anchor="middle" style="font-size:36px;fill:#E8ECF3;font-family:var(--f-mono)">${fmt(nowMin)}</text><text x="${c}" y="${c+26}" text-anchor="middle" style="font-size:11px;fill:#8E99AD;font-family:var(--f-body)">${r.tz||''}</text>`;
+  const W=320,c=160,R=134,S=88;   // R：一日の帯、S：石膏の球
+  const ink='#ECE8E0';
+  let h=`<svg viewBox="0 0 ${W} ${W}" role="img" aria-label="今日の24時間">
+  <defs>
+    <radialGradient id="zSph" cx="36%" cy="30%" r="74%" fx="32%" fy="26%"><stop offset="0" stop-color="#F3F1EC"/><stop offset=".35" stop-color="#E4E1DB"/><stop offset=".62" stop-color="#B9B6B0"/><stop offset=".86" stop-color="#6F6D69"/><stop offset="1" stop-color="#4A4946"/></radialGradient>
+    <radialGradient id="zRef" cx="78%" cy="86%" r="40%"><stop offset="0" stop-color="#9A9792" stop-opacity=".55"/><stop offset="1" stop-color="#9A9792" stop-opacity="0"/></radialGradient>
+    <radialGradient id="zSh" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#000" stop-opacity=".7"/><stop offset=".6" stop-color="#000" stop-opacity=".25"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>
+    <filter id="zBrush" x="-10%" y="-10%" width="120%" height="120%"><feTurbulence type="fractalNoise" baseFrequency=".55" numOctaves="2" seed="7" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="1.8"/></filter>
+    <filter id="zGlow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3.5"/></filter>
+    <pattern id="zHatch" width="3" height="3" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="0.8" height="3" fill="#86837C"/></pattern>
+  </defs>`;
+  /* 一日の線：細い一本の線の上に、光・眠り・避ける時間を描く */
+  h+=`<circle cx="${c}" cy="${c}" r="${R}" fill="none" stroke="#2A2926" stroke-width="1"/>`;
+  const seg=(list,st,w,x='')=>list.forEach(([s,e])=>{h+=`<path d="${arc(c,R,s,Math.min(e,s+M-0.5))}" fill="none" stroke="${st}" stroke-width="${w}" stroke-linecap="round" ${x}/>`});
+  seg(r.sleep,'#6F8FC0',5,'filter="url(#zGlow)" opacity=".22"');seg(r.sleep,'#6F8FC0',2.8);
+  seg(r.avoid,'url(#zHatch)',6);
+  seg(r.seekOut||r.seek,'#E6BE5A',8,'filter="url(#zGlow)" opacity=".28"');seg(r.seekOut||r.seek,'#E6BE5A',3);seg(r.seekIn||[],'#B8994C',2.4);
+  /* 食事：円の内側に小さな点（内臓の時計を合わせる時刻） */
+  for(const m of (r.meals||[])){const a=mod(m.t)/M*2*Math.PI-Math.PI/2;h+=`<circle cx="${c+(R-6)*Math.cos(a)}" cy="${c+(R-6)*Math.sin(a)}" r="2.3" fill="#8FB59A"/>`}
+  for(let i=0;i<24;i+=6){const a=i/24*2*Math.PI-Math.PI/2;h+=`<text x="${c+(R-15)*Math.cos(a)}" y="${c+(R-15)*Math.sin(a)+4}" text-anchor="middle" style="font-size:12px;fill:#8A8780;font-family:var(--f-body)">${i}</text>`}
+  /* いまの位置と、体温最低点 */
+  const pt=(m,rr)=>{const a=mod(m)/M*2*Math.PI-Math.PI/2;return[c+rr*Math.cos(a),c+rr*Math.sin(a)]};
+  const[nx,ny]=pt(nowMin,R);h+=`<circle cx="${nx}" cy="${ny}" r="9.5" fill="#C2411F" opacity=".18"/><circle cx="${nx}" cy="${ny}" r="5.5" fill="#C2411F"/>`;
+  /* 体温最低点の印は出さない（計算は裏で使い、「時計のずれ」に言葉で出す） */
+  /* 石膏の球 */
+  const rs=S-10,iw=rs/0.4240,ih=iw*1.0588;
+  h+=`<image class="zball" data-c="${c}" data-r="${rs}" href="data:image/webp;base64,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" x="${(c-iw*0.5008).toFixed(1)}" y="${(c-ih*0.4730).toFixed(1)}" width="${iw.toFixed(1)}" height="${ih.toFixed(1)}"/>`;
+  h+=`<text x="${c}" y="${c+6}" text-anchor="middle" style="font-size:38px;fill:#1B1C19;font-family:var(--f-body);letter-spacing:.04em">${fmt(nowMin)}</text><text x="${c}" y="${c+27}" text-anchor="middle" style="font-size:10.5px;fill:#4E504A;font-family:var(--f-body);letter-spacing:.12em">${r.tz||''}</text>`;
+  /* 円相：記録が増えるほど筆が進む */
+  h+=enso(c,R+26,window.ZEN_GROW||0);
   return h+'</svg>';
 }
+/* 筆の一筆。p=0..1 */
+function enso(c,R,p){
+  if(p<=0)return'';
+  const start=-Math.PI/2-0.5,span=Math.PI*2*0.93*Math.max(0.04,p),N=Math.max(6,Math.round(90*p));
+  let h=`<g filter="url(#zBrush)" opacity=".92">`;
+  for(let k=0;k<N;k++){
+    const t0=k/N,t1=(k+1)/N,a0=start+span*t0,a1=start+span*t1;
+    const tt=(t0+t1)/2*p;   // 筆の全体の中での位置
+    const w=(tt<0.06?2+tt/0.06*5:7)*(1-0.55*Math.max(0,(tt-0.6)/0.4))*(0.92+0.08*Math.sin(k*1.7));
+    const rr=R+Math.sin(tt*9)*1.4;
+    const op=tt>0.82?0.95-(tt-0.82)*2.6:0.95;
+    h+=`<path d="M${(c+rr*Math.cos(a0)).toFixed(2)} ${(c+rr*Math.sin(a0)).toFixed(2)} A${rr} ${rr} 0 0 1 ${(c+rr*Math.cos(a1)).toFixed(2)} ${(c+rr*Math.sin(a1)).toFixed(2)}" fill="none" stroke="#ECE8E0" stroke-opacity="${op.toFixed(2)}" stroke-width="${w.toFixed(2)}" stroke-linecap="round"/>`;
+  }
+  return h+'</g>';
+}
+
 function left(ms){const m=Math.round(ms/6e4);if(m<60)return`あと${m}分`;if(m<2880){const h=Math.floor(m/60);return`あと${h}時間${m%60?m%60+'分':''}`}return`あと${Math.round(m/1440)}日`}
 
 /* 今日の表示がないとき（旅の前・機内・旅のあと） */
@@ -1297,20 +1435,22 @@ function render(){
   const more=est.dMeas==null||est.opposite?'':`${est.src}では ${hrs(Math.abs(est.dMeas))}、計画では ${hrs(Math.abs(est.dModel))}。1日の値に振り回されないよう、両方をならして出しています。`;
   const cmp=cmp0+(more?`<div class="more" hidden>${more}</div>`:'');
   if(isPrep(r0)){
-    el('gClock').innerHTML=`<small>出発前の準備</small><b style="color:var(--t-sunlo)">${dd<15?'まだ動かさない':hrs(dd)+(est.d<0?'前へ':'後ろへ')}</b>
-      <div class="t-bar"><i style="width:${Math.min(100,dd/240*100)}%;background:#F2A944"></i></div><div class="sub">${est.dMeas==null?'家の時刻から、体内時計をここまで動かす':`${est.src}では ${hrs(Math.abs(est.dMeas))}`}</div>`;
+    el('gClock').innerHTML=`<small>出発前の準備</small><b style="color:var(--paper-ink)">${dd<15?'まだ動かさない':hrs(dd)+(est.d<0?'前へ':'後ろへ')}</b>
+      <div class="t-bar"><i style="width:${Math.min(100,dd/240*100)}%;background:#161512"></i></div><div class="sub">${est.dMeas==null?'家の時刻から、体内時計をここまで動かす':`${est.src}では ${hrs(Math.abs(est.dMeas))}`}</div>`;
   }else{
-    el('gClock').innerHTML=`<small>時計のずれ${more?' <span class="i">ⓘ</span>':''}</small><b style="color:${dd<60?'var(--t-ok)':'var(--t-sunlo)'}">${dd<15?'合っている':'あと'+hrs(dd)}</b>
-      <div class="t-bar"><i style="width:${Math.min(100,dd/Math.max(tot,1)*100)}%;background:${dd<60?'#5DBE85':'#F2A944'}"></i></div><div class="sub">${cmp}</div>`;
+    el('gClock').innerHTML=`<small>時計のずれ${more?' <span class="i">ⓘ</span>':''}</small><b style="color:${dd<60?'#22382A':'var(--paper-ink)'}">${dd<15?'合っている':'あと'+hrs(dd)}</b>
+      <div class="t-bar"><i style="width:${Math.min(100,dd/Math.max(tot,1)*100)}%;background:${dd<60?'#2F4A35':'#161512'}"></i></div><div class="sub">${cmp}</div>`;
   }
-  const col=rec.lv==null?'#8E99AD':['#F08A64','#F6C27A','#8E99AD','#5DBE85'][rec.lv];
+  const col=rec.lv==null?'#3F3D38':['#8A2E18','#5A3A22','#2B2A26','#22382A'][rec.lv];
   el('gRec').innerHTML=`<small>回復度</small><b style="color:${col};${rec.lv==null?'font-size:15px;font-weight:400':''}">${rec.label}</b>
-    <div class="t-pills">${[0,1,2,3].map(i=>`<span style="background:${rec.lv!=null&&i<=rec.lv?col:'#1E2638'}"></span>`).join('')}</div><div class="sub">${rec.lv==null?'起きたときの体だけでも出せます':rec.why.length?rec.why.join('・'):'いつもの自分と同じ範囲'}</div>`;
+    <div class="t-pills">${[0,1,2,3].map(i=>`<span style="background:${rec.lv!=null&&i<=rec.lv?col:'rgba(0,0,0,.18)'}"></span>`).join('')}</div><div class="sub">${rec.lv==null?'起きたときの体だけでも出せます':rec.why.length?rec.why.join('・'):'いつもの自分と同じ範囲'}</div>`;
   const alerts=[];
   if(est.opposite)alerts.push(`${est.src}では、体内時計が予定と逆の向きに動いている可能性があります。光を浴びる・避ける時間帯を特に守り、明日の朝もう一度確かめます。`);
   if(rec.respAlert)alerts.push('夜の呼吸数がいつもより毎分3回以上多い。体調を崩す前触れのことがあります。今日は予定を減らして休み、熱やだるさがあれば医療機関に相談を。');
   if(!isPrep(r0)&&dd<60&&rec.lv!=null&&rec.lv>=2)alerts.push('時計のずれが1時間以内で、回復度もいつもの範囲。この状態が明日も続けば着地です。');
-  el('tAlert').innerHTML=alerts.map(a=>`<div class="t-alert"${a.includes('着地')?' style="color:#5DBE85;border-color:#24402F;background:#121B17"':''}>${a}</div>`).join('');
+  el('tAlert').innerHTML=alerts.map(a=>`<div class="t-alert"${a.includes('着地')?' style="border-left-color:#ECE8E0;color:#ECE8E0"':''}>${a}</div>`).join('');
+  {window.ZEN_GROW=0;
+   const inAvoid=(r.avoid||[]).some(([a,b])=>lp.min>=a&&lp.min<b)||(r.sleep||[]).some(([a,b])=>lp.min>=a&&lp.min<b);document.getElementById('app').classList.toggle('dusk',inAvoid);}
   el('tDial').innerHTML=dial(r,lp.min,est);
   const tl=ms=>fmt(localParts(ms,r.zone).min);
   const act=items.filter(x=>!['arr','dep'].includes(x.k));
@@ -1364,6 +1504,75 @@ function show(tab){
 }
 document.addEventListener('click',e=>{const b=e.target.closest('[data-tab],[data-go]');if(!b)return;show(b.dataset.tab||b.dataset.go)});
 start();
+})();
+
+
+/* ---------- 白磁の球：光は止めたまま、ろくろ目だけがゆっくり流れる（WebGL、数KB） ---------- */
+(function(){
+  const host=document.getElementById('tLive');if(!host)return;
+  const RM=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(RM)return;                                    // 動きを減らす設定の人には、止まった球のまま
+  const cv=document.createElement('canvas');cv.className='zball-gl';cv.setAttribute('aria-hidden','true');
+  const gl=cv.getContext('webgl',{premultipliedAlpha:true,alpha:true,antialias:false});if(!gl)return;
+  host.style.position='relative';host.appendChild(cv);
+  const VS='attribute vec2 p;varying vec2 uv;void main(){uv=p;gl_Position=vec4(p,0.,1.);}';
+  const FS=`precision highp float;varying vec2 uv;uniform float t;uniform sampler2D H;uniform float px;
+  mat3 rot(vec3 a,float g){a=normalize(a);float s=sin(g),c=cos(g),o=1.-c;
+    return mat3(o*a.x*a.x+c,o*a.x*a.y+a.z*s,o*a.z*a.x-a.y*s, o*a.x*a.y-a.z*s,o*a.y*a.y+c,o*a.y*a.z+a.x*s, o*a.z*a.x+a.y*s,o*a.y*a.z-a.x*s,o*a.z*a.z+c);}
+  float hgt(vec3 n,mat3 R){vec3 q=R*n;float v=asin(clamp(q.y,-1.,1.))/3.14159265+.5;return texture2D(H,vec2(v,.5)).r;}
+  void main(){
+    vec2 xy=uv;float r2=dot(xy,xy);if(r2>1.){gl_FragColor=vec4(0.);return;}
+    vec3 n=vec3(xy,sqrt(1.-r2));
+    mat3 R=rot(vec3(1.,-.38,0.),t);                 /* 左側の表面が、下から上へ流れる向き */
+    float e=2.5*px,h0=hgt(n,R);
+    vec2 a=xy+vec2(e,0.),b=xy+vec2(0.,e);
+    float hx=hgt(vec3(a,sqrt(max(0.,1.-dot(a,a)))),R)-h0,hy=hgt(vec3(b,sqrt(max(0.,1.-dot(b,b)))),R)-h0;
+    vec3 g=vec3(hx,hy,0.)/e;g*=min(1.,.9/max(.001,length(g)*.006));vec3 nb=normalize(n-g*.0014);
+    vec3 L=normalize(vec3(.05,-.80,.60));           /* 光は下（12時の側）から */
+    float dif=max(0.,dot(nb,L)),wrap=max(0.,(dot(nb,L)+.35)/1.35);
+    vec3 Hh=normalize(L+vec3(0.,0.,1.));float sp=pow(max(0.,dot(nb,Hh)),40.)*(.25+h0*.1);
+    float fres=pow(1.-n.z,3.);
+    vec3 base=vec3(.851,.859,.831);
+    vec3 col=base*(.06+.86*wrap*wrap+.12*dif)+vec3(.95,.95,.92)*sp+vec3(.55,.57,.55)*fres*.10;
+    col=col/(col+vec3(.55))*1.55;                   /* やわらかいトーン */
+    float edge=smoothstep(1.,1.-2.2*px,sqrt(r2));
+    gl_FragColor=vec4(col*edge,edge);}`;
+  const sh=(t,s)=>{const o=gl.createShader(t);gl.shaderSource(o,s);gl.compileShader(o);if(!gl.getShaderParameter(o,gl.COMPILE_STATUS))throw gl.getShaderInfoLog(o);return o};
+  let pr;try{pr=gl.createProgram();gl.attachShader(pr,sh(gl.VERTEX_SHADER,VS));gl.attachShader(pr,sh(gl.FRAGMENT_SHADER,FS));gl.linkProgram(pr)}catch(e){cv.remove();return}
+  gl.useProgram(pr);
+  const buf=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buf);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_DRAW);
+  const lp=gl.getAttribLocation(pr,'p');gl.enableVertexAttribArray(lp);gl.vertexAttribPointer(lp,2,gl.FLOAT,false,0,0);
+  /* ろくろ目の高さ（緯度ごと）：不規則な細い筋を重ねる */
+  const N=512,rnd=(()=>{let s=11;return()=>(s=(s*16807)%2147483647)/2147483647})(),ridges=[];
+  for(let i=0;i<14;i++)ridges.push({v:.12+rnd()*.76,a:Math.pow(rnd(),3)*1.1+.06,w:.002+rnd()*.008});
+  const hv=new Float32Array(N);let mx=0;
+  for(let i=0;i<N;i++){const v=i/N;let h=0;for(const q of ridges){const d=(v-q.v)/q.w;h+=q.a*Math.exp(-d*d)}hv[i]=h;mx=Math.max(mx,h)}
+  const tex=new Uint8Array(N*4);for(let i=0;i<N;i++){const g=Math.round(hv[i]/mx*255);tex.set([g,g,g,255],i*4)}
+  const T=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,T);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,N,1,0,gl.RGBA,gl.UNSIGNED_BYTE,tex);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+  const ut=gl.getUniformLocation(pr,'t'),upx=gl.getUniformLocation(pr,'px');gl.uniform1i(gl.getUniformLocation(pr,'H'),0);
+  const PERIOD=120;           // 1周120秒
+  let last=0,t0=performance.now();
+  function place(){
+    const svg=document.querySelector('#tDial svg'),img=svg&&svg.querySelector('.zball');if(!img)return false;
+    const hr=host.getBoundingClientRect(),sr=svg.getBoundingClientRect(),k=sr.width/320;
+    const c=+img.dataset.c,rs=+img.dataset.r,size=2*rs*k,dpr=Math.min(2,devicePixelRatio||1);
+    const left=sr.left-hr.left+(c-rs)*k,top=sr.top-hr.top+(c-rs)*k;
+    cv.style.cssText=`position:absolute;left:${left}px;top:${top}px;width:${size}px;height:${size}px;pointer-events:none;z-index:0`;
+    const W=Math.round(size*dpr);if(cv.width!==W){cv.width=cv.height=W;gl.viewport(0,0,W,W)}
+    img.style.visibility='hidden';svg.style.position='relative';svg.style.zIndex='1';
+    return W;
+  }
+  function frame(now){
+    requestAnimationFrame(frame);
+    if(document.hidden||host.offsetParent===null||host.hidden)return;     // 「今日」が見えていないときは描かない
+    if(now-last<40)return;last=now;                                      // 1秒に約25回
+    const W=place();if(!W)return;
+    gl.uniform1f(ut,((now-t0)/1000)/PERIOD*Math.PI*2);gl.uniform1f(upx,2/W);
+    gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
+  }
+  requestAnimationFrame(frame);
 })();
 
 </script>
