@@ -393,6 +393,8 @@ input[type=range]{padding:0;background:transparent;border:0;accent-color:var(--s
       <li><b>社会的時差ぼけ</b>：平日と休日の睡眠中央時刻の差。Wittmann M ほか. <i>Chronobiol Int</i> 2006;23(1-2):497-509. doi:10.1080/07420520500545979 ／ Roenneberg T ほか. <i>Curr Biol</i> 2012;22(10):939-43. doi:10.1016/j.cub.2012.03.038</li>
       <li><b>機内の揺れ</b>：北大西洋上空の強い晴天乱気流は、1979〜2020年で年間17.7時間から27.4時間へ約55%増加。Prosser MC, Williams PD, Marlton GJ, Harrison RG. <i>Geophys Res Lett</i> 2023;50:e2023GL103814. doi:10.1029/2023GL103814</li>
       <li><b>運転中の眠気</b>：カフェインをとってすぐ15分の仮眠をとると、どちらか一方より眠気と運転の乱れが減る。Reyner LA, Horne JA. <i>Psychophysiology</i> 1997;34(6):721-5. doi:10.1111/j.1469-8986.1997.tb02148.x</li>
+      <li><b>入浴から就寝までの間隔</b>：平均72歳の1,094人を実生活で測定。入浴から就寝まで61〜180分のとき寝つきが速く、手足から熱が逃げる指標も大きかった。Tai Y, Obayashi K, Yamagami Y ほか. <i>J Clin Sleep Med</i> 2021;17(6):1257-66. doi:10.5664/jcsm.9180</li>
+      <li><b>温かい足と入眠</b>：手足の皮膚温が上がる（熱が逃げる）ほど、速く眠りにつく。Kräuchi K, Cajochen C, Werth E, Wirz-Justice A. <i>Nature</i> 1999;401:36-7. doi:10.1038/43366</li>
       <li><b>メラトニン</b>：Herxheimer A, Petrie KJ. <i>Cochrane Database Syst Rev</i> 2002;(2):CD001520. doi:10.1002/14651858.CD001520</li>
     </ul>
   </section>
@@ -437,6 +439,7 @@ function lightPlan(dir,cbt,wake,bed,awake){
   seek=inter(seek,awake);avoid=inter(avoid,awake);
   if(dir>0){if(len(seek)<60)seek=inter(lin(wake,wake+90),awake);if(len(avoid)<60)avoid=inter(lin(bed-120,bed),awake)}
   if(dir<0){if(len(seek)<60)seek=inter(lin(bed-180,bed),awake);if(len(avoid)<60)avoid=inter(lin(wake,wake+120),awake)}
+  seek=minus(seek,lin(bed-60,bed));   // 寝る前の1時間は照明を落とす時間（光の直後は寝つけない）
   return{seek,avoid:minus(avoid,seek)};
 }
 function makeDay(o){
@@ -455,7 +458,7 @@ function makeDay(o){
   r.seekOut=r.seek;r.seekIn=[];
   if(o.city&&o.iso){const day=sunTimes(o.iso,o.city);
     r.seekOut=inter(r.seek,day);r.seekIn=minus(r.seek,day);const avDay=inter(r.avoid,day);
-    if(len(r.seekIn)<30){r.seekOut=r.seek;r.seekIn=[]}else if(len(r.seekOut)<30){r.seekIn=r.seek;r.seekOut=[]}
+    if(len(r.seekIn)<30&&len(r.seekOut)>=len(r.seekIn)){r.seekOut=r.seek;r.seekIn=[]}else if(len(r.seekOut)<30){r.seekIn=r.seek;r.seekOut=[]}
     const extra=[];
     if(len(r.seekIn)>=30)extra.push(`${ivs(r.seekIn)} は外が暗い。照明を全開に（光療法ライトがあれば使う）`);
     if(len(r.seekOut)>=30&&len(r.seekIn)>=30)extra.push(`${ivs(r.seekOut)} は外に出て浴びる`);
@@ -464,6 +467,9 @@ function makeDay(o){
     if(o.dir&&len(avEve)>=30)extra.push(`${ivs(avEve)} は照明を暖色で暗めに。コンビニなど明るい店は15分でも時計が動くので寄らない`);
     r.notes=[...(o.notes||[]),...extra];
     if(len(r.seekOut)>=30){const[a,b]=lightDose(o.iso,o.city,r.seekOut);r.lightTxt=`晴れなら${a}分、曇りなら${b}分`;r.lightMin=[a,b]}}
+  /* 入浴：就寝の90分前（1〜2時間前に40〜42℃で10分）。機内と、到着前・出発後の時間には置かない */
+  {const t=mod(o.bed-90);const blocked=o.flight||(o.blank||[]).some(([s,e])=>t>=s&&t<e);r.bath=blocked?null:t;
+   const cl=o.city&&o.iso?clim(o.city.name,o.iso):null;r.bathShower=!!(cl&&cl[0]>=30)}
   const cEnd=o.bed-480;r.caff=sdiff(cEnd,o.wake)>60?fmt(cEnd)+'まで':'控える';
   r.sleepTxt=`${fmt(o.bed)} → 翌${fmt(o.nextWake??o.wake)}`;
   return r;
@@ -894,6 +900,7 @@ function dayHTML(r){
   if(len(r.seek))det.push(`<span class="s"><em>光を浴びる</em><span class="t">${ivs(r.seek)}</span>${r.lightMin?`<em class="dose">晴${r.lightMin[0]}分・曇${r.lightMin[1]}分</em>`:''}</span>`);
   if(len(r.avoid))det.push(`<span><em>光を避ける</em><span class="t">${ivs(r.avoid)}</span></span>`);
   if(len(r.ex||[]))det.push(`<span><em>運動・早歩き</em><span class="t">${ivs(r.ex)}</span></span>`);
+  if(r.bath!=null)det.push(`<span><em>入浴</em><span class="t">${fmt(r.bath)}</span></span>`);
   if(r.meals.length)det.push(`<span><em>食事</em><span class="t">${r.meals.map(m=>fmt(m.t)).join(' / ')}</span></span>`);
   if(!r.flight&&r.caff)det.push(`<span><em>カフェイン</em><span class="t">${r.caff}</span></span>`);
   const cur=r.cur?`<div class="curlab">今</div>${track({sleep:r.cur},'cur')}<div class="curlab">提案</div>`:'';
@@ -965,6 +972,7 @@ function eventsFor(groups){
     for(const[s,e]of pieces(r.seekOut))ev.push({summary:'時差ほどき｜外で光を浴びる',startTime:at(s),endTime:at(e),timeZone:r.zone,colorId:'5',rem:0,desc});
     for(const[s,e]of pieces(r.avoid))ev.push({summary:'時差ほどき｜光を避ける',startTime:at(s),endTime:at(e),timeZone:r.zone,colorId:'8',rem:5,desc});
     const b=mod(r.bed)<mod(r.wake)?mod(r.bed)+M:mod(r.bed);
+    if(r.bath!=null){const bt=mod(r.bath)<mod(r.wake)?mod(r.bath)+M:mod(r.bath);ev.push({summary:'時差ほどき｜入浴',startTime:at(bt),endTime:at(bt+10),timeZone:r.zone,colorId:'3',rem:10,desc})}
     ev.push({summary:'時差ほどき｜就寝',startTime:at(b),endTime:at(b+15),timeZone:r.zone,colorId:'9',rem:30,desc});
   }
   return ev;
@@ -1028,7 +1036,7 @@ let pushId=null,pushTimer=null,deferredInstall=null;
 try{pushId=localStorage.getItem('jisa-push-id')}catch(e){}
 function pushEvents(groups){
   return eventsFor(groups).map(e=>{const s=e.startTime.slice(11,16),t=e.endTime.slice(11,16),kind=e.summary.replace('時差ほどき｜','');
-    const body=kind==='就寝'?`${s}に就寝。照明を落として準備を`:kind==='光を避ける'?`${s}–${t}。サングラスか、照明を暗めに`
+    const body=kind==='入浴'?`${s}に入浴。40〜42℃の湯に10分（なければ熱めのシャワー）`:kind==='就寝'?`${s}に就寝。照明を落として準備を`:kind==='光を避ける'?`${s}–${t}。サングラスか、照明を暗めに`
       :kind==='照明で光を浴びる'?`${s}–${t}。外は暗いので照明を全開に`:`${s}–${t}。外に出て光を浴びる`;
     return{at:localToUtc(e.startTime,e.timeZone)-e.rem*6e4,title:kind,body,tag:kind}}).filter(x=>x.at>Date.now()-6e4);
 }
@@ -1233,7 +1241,7 @@ function buildItems(r){
   for(const[s,e]of merged(r.avoid))push('avoid',s,e);
   for(const[s,e]of merged(r.ex||[]))push(r._walk?'walk':'ex',s,e);
   for(const m of r.meals)push('meal',off(m.t),null,{label:m.n==='朝'?'朝食':m.n==='昼'?'昼食':'夕食'});
-  if(r.dir)push('bath',off(mod(r.bed-90)),null);
+  if(r.bath!=null)push('bath',off(r.bath),null);
   push('sleep',off(mod(r.bed)),null,r._early?{note:'いつもより30分早く'}:{});
   if(r.arr!=null)push('arr',r.arr,null);if(r.dep!=null)push('dep',r.dep,null);
   return items.sort((a,b)=>a.s-b.s);
@@ -1299,7 +1307,7 @@ function render(){
   const act=items.filter(x=>!['arr','dep'].includes(x.k));
   const cur=act.find(x=>x.e&&x.s<=nowUtc&&x.e>nowUtc&&['seek','seekIn','avoid','ex','walk'].includes(x.k));const nxt=act.find(x=>x.s>nowUtc);const it=cur||nxt;
   const name=x=>x.label||KIND[x.k].n;
-  const tip=x=>x.k==='seek'?`外に出る。${r.lightTxt||'晴れなら15分、曇りなら30分'}。曇りでも室内よりずっと明るい。`:TIP[x.k];
+  const tip=x=>x.k==='seek'?`外に出る。${r.lightTxt||'晴れなら15分、曇りなら30分'}。曇りでも室内よりずっと明るい。`:x.k==='bath'?(r.bathShower?'暑い土地なので、湯船より10分のシャワーで十分。上がったら照明を落としていく。':'40〜42℃の湯に10分。湯船がなければ熱めのシャワーを10分。上がったら照明を落としていく。'):TIP[x.k];
   const nx=el('tNext');nx.className='t-next'+(cur?' now':'');
   nx.innerHTML=it?`<small>${cur?'いま':'次にやること'}</small><div class="what"><b>${name(it)}</b><span>${tl(it.s)}${it.e?'–'+tl(it.e):''}</span></div><div class="left">${cur?left(it.e-nowUtc)+'まで':left(it.s-nowUtc)}</div>${tip(it)?`<div class="tip">${tip(it)}</div>`:''}`:'<small>次にやること</small><div class="what"><b>今日の予定は終わり</b></div>';
   el('tList').innerHTML=`<h4>今日の予定（${est.src||rec.lv!=null?'今朝の答えで組み直し':'移動の予定から計算'}）</h4>`+items.map(x=>`<div class="t-row${(x.e||x.s)<nowUtc?' past':''}"><span class="tm">${tl(x.s)}${x.e?'–'+tl(x.e):''}</span><i style="background:${KIND[x.k].c}"></i><span>${name(x)}${x.note?`<em>${x.note}</em>`:''}</span></div>`).join('')
