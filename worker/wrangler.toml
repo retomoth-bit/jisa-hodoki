@@ -13,4 +13,4 @@ crons = ["* * * * *"]
 [[d1_databases]]
 binding = "DB"
 database_name = "jisa-hodoki"
-database_id = "REPLACE_WITH_D1_ID"
+database_id = "2a75aa78-e7a9-407d-8ec8-ebc818b2612d"

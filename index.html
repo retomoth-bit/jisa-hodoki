@@ -813,8 +813,8 @@ async function calAdd(){
 }
 
 /* ---------- 通知（ホーム画面版） ---------- */
-const PUSH_API='';      // デプロイ後に Worker のURLを入れる（例: https://jisa-hodoki-push.xxxx.workers.dev）
-const VAPID_PUBLIC='';  // gen-vapid.mjs が出す VAPID_PUBLIC
+const PUSH_API='https://jisa-hodoki-push.retomoth.workers.dev';      // デプロイ後に Worker のURLを入れる（例: https://jisa-hodoki-push.xxxx.workers.dev）
+const VAPID_PUBLIC='BNTsJ9F-EePBKcyVQ5WdpzJpzEqYXaYtNApglPU276GkBK19yWddzWRgYNeZv7ImANv3nlOQgQ3XHnht-Hvq0iI';  // gen-vapid.mjs が出す VAPID_PUBLIC
 const UA=navigator.userAgent||'';
 const IS_IOS=/iPhone|iPad|iPod/.test(UA)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 const IS_ANDROID=/Android/.test(UA);
