@@ -287,6 +287,9 @@ input[type=range]{padding:0;background:transparent;border:0;accent-color:var(--s
 .wz-err{margin:0;color:#D9876F;font-size:13px}
 .pl-card .wz-choices{margin-top:6px}
 
+.chk{display:flex!important;align-items:center;gap:8px;font-size:13px;color:var(--t-ink)}
+.chk input{width:auto;accent-color:#ECE8E0}
+
 /* ---------- 試作：石膏と紙の質感 ---------- */
 :root{--bg:#0A0A09;--surface:#141413;--ink:#ECE8E0;--muted:#8A8780;--line:#262523;--track:#1A1A18;
   --t-bg:#0A0A09;--t-sf:#141413;--t-sf2:#141413;--t-ink:#ECE8E0;--t-mut:#8A8780;--t-line:#262523;--t-sun:#ECE8E0;--t-sunlo:#ECE8E0;--t-ok:#2F4A35;--t-warn:#8A2E18;
@@ -514,6 +517,8 @@ input,select{background:#0A0A09;border-color:#2A2927;border-radius:3px}
           <p class="calstatus" id="pushStatus" role="status"></p>
           <button type="button" id="pushStop" class="linkbtn" hidden>通知を止める</button>
         </div>
+        <label class="chk"><input type="checkbox" id="notifAll"> すべての予定を通知する（光を避ける・入浴も毎日）</label>
+        <p class="hint">ふだんは「光を浴びる」と「就寝」だけ。海外に着いてからの3日間だけ、「光を避ける」と「入浴」も届く。</p>
         <p class="hint" id="calInfo">「光を浴びる」「光を避ける」「就寝」を予定として入れる。カレンダーのリマインダーがスマホに通知される。</p>
         <button type="button" id="calBtn" class="calbtn">Googleカレンダーに登録</button>
         <p class="hint" id="calHow" hidden></p>
@@ -607,10 +612,10 @@ function lightPlan(dir,cbt,wake,bed,awake){
   if(dir>0){seek=lin(cbt,cbt+180);avoid=lin(cbt-180,cbt)}
   else if(dir<0){seek=lin(cbt-180,cbt);avoid=lin(cbt,cbt+180)}
   else{seek=lin(wake,wake+120);avoid=lin(bed-120,bed)}
-  seek=minus(inter(seek,awake),lin(bed-90,bed));avoid=inter(avoid,awake);
+  seek=minus(inter(seek,awake),lin(bathAt(bed),bed));avoid=inter(avoid,awake);
   if(dir>0){if(len(seek)<60)seek=inter(lin(wake,wake+90),awake);if(len(avoid)<60)avoid=inter(lin(bed-120,bed),awake)}
-  if(dir<0){if(len(seek)<60)seek=inter(lin(bed-180,bed),awake);if(len(avoid)<60)avoid=inter(lin(wake,wake+120),awake)}
-  seek=minus(seek,lin(bed-90,bed));   // 光は入浴（就寝90分前）までに終える。そのあとは入浴と、照明を落とす時間
+  if(dir<0){if(len(seek)<60)seek=inter(lin(bathAt(bed)-150,bathAt(bed)),awake);if(len(avoid)<60)avoid=inter(lin(wake,wake+120),awake)}
+  seek=minus(seek,lin(bathAt(bed),bed));   // 光は入浴（就寝の90分〜3時間前）までに終える。そのあとは入浴と、照明を落とす時間
   return{seek,avoid:minus(avoid,seek)};
 }
 function makeDay(o){
@@ -639,7 +644,7 @@ function makeDay(o){
     r.notes=[...(o.notes||[]),...extra];
     if(len(r.seekOut)>=30){const[a,b]=lightDose(o.iso,o.city,r.seekOut);r.lightTxt=`晴れなら${a}分、曇りなら${b}分`;r.lightMin=[a,b]}}
   /* 入浴：就寝の90分前（1〜2時間前に40〜42℃で10分）。機内と、到着前・出発後の時間には置かない */
-  {const t=mod(o.bed-90);const blocked=o.flight||(o.blank||[]).some(([s,e])=>t>=s&&t<e);r.bath=blocked?null:t;
+  {const t=bathAt(o.bed);const blocked=o.flight||(o.blank||[]).some(([s,e])=>t>=s&&t<e);r.bath=blocked?null:t;
    const cl=o.city&&o.iso?clim(o.city.name,o.iso):null;r.bathShower=!!(cl&&cl[0]>=30)}
   const cEnd=o.bed-480;r.caff=sdiff(cEnd,o.wake)>60?fmt(cEnd)+'まで':'控える';
   r.sleepTxt=`${fmt(o.bed)} → 翌${fmt(o.nextWake??o.wake)}`;
@@ -792,6 +797,8 @@ function sunTimes(iso,c){
 function tzOff(zone,ms){const p={};new Intl.DateTimeFormat('en-US',{timeZone:zone,hourCycle:'h23',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}).formatToParts(new Date(ms)).forEach(x=>p[x.type]=x.value);
   return Math.round((Date.UTC(+p.year,+p.month-1,+p.day,+p.hour%24,+p.minute)-Math.floor(ms/6e4)*6e4)/6e4)}
 
+/* 入浴の時刻：なるべく22:00ごろ。ただし就寝の90分〜3時間前の範囲で（入浴から就寝まで61〜180分で寝つきが速い） */
+function bathAt(bed){const gap=Math.max(90,Math.min(180,sdiff(bed,22*60)));return mod(bed-gap)}
 /* 太陽高度（度）。localMin は現地時刻の分 */
 function sunElev(iso,c,localMin){
   const[y,m,d]=iso.split('-').map(Number);const noon=Date.UTC(y,m-1,d,12);
@@ -1172,6 +1179,8 @@ function eventsFor(groups){if(window.PLAN_ON===false)return[];
   const ev=[];
   for(const g of groups||[])for(const r of g.days){
     if(!r.iso||r.flight)continue;
+    let ALL=false;try{ALL=localStorage.getItem('jisa-notif-all')==='1'}catch(e){}
+    const full=ALL||(mode==='intl'&&r.dir&&/^(到着日|2日目|3日目)$/.test(r.tag||''));
     const base=Date.parse(r.iso+'T00:00:00Z');
     const at=m=>new Date(base+m*6e4).toISOString().slice(0,19);
     const pieces=list=>{const L=list.map(x=>x.slice()).sort((a,b)=>a[0]-b[0]);
@@ -1180,9 +1189,9 @@ function eventsFor(groups){if(window.PLAN_ON===false)return[];
     const desc=[r.tag+(r.tz?'（'+r.tz+'）':''),`起床 ${fmt(r.wake)} / 就寝 ${fmt(r.bed)}`,r.meals.length?`食事 ${r.meals.map(m=>fmt(m.t)).join(' / ')}`:'',len(r.ex||[])?`運動・早歩き ${ivs(r.ex)}`:'',`カフェイン ${r.caff}`,...r.notes.map(n=>typeof n==='string'?n:n.t)].filter(Boolean).join('\n');
     for(const[s,e]of pieces(r.seekIn))ev.push({summary:'時差ほどき｜照明で光を浴びる',startTime:at(s),endTime:at(e),timeZone:r.zone,colorId:'5',rem:0,desc});
     for(const[s,e]of pieces(r.seekOut))ev.push({summary:'時差ほどき｜外で光を浴びる',startTime:at(s),endTime:at(e),timeZone:r.zone,colorId:'5',rem:0,desc});
-    for(const[s,e]of pieces(r.avoid))ev.push({summary:'時差ほどき｜光を避ける',startTime:at(s),endTime:at(e),timeZone:r.zone,colorId:'8',rem:5,desc});
+    if(full)for(const[s,e]of pieces(r.avoid))ev.push({summary:'時差ほどき｜光を避ける',startTime:at(s),endTime:at(e),timeZone:r.zone,colorId:'8',rem:5,desc});
     const b=mod(r.bed)<mod(r.wake)?mod(r.bed)+M:mod(r.bed);
-    if(r.bath!=null){const bt=mod(r.bath)<mod(r.wake)?mod(r.bath)+M:mod(r.bath);ev.push({summary:'時差ほどき｜入浴',startTime:at(bt),endTime:at(bt+10),timeZone:r.zone,colorId:'3',rem:10,desc})}
+    if(full&&r.bath!=null){const bt=mod(r.bath)<mod(r.wake)?mod(r.bath)+M:mod(r.bath);ev.push({summary:'時差ほどき｜入浴',startTime:at(bt),endTime:at(bt+10),timeZone:r.zone,colorId:'3',rem:10,desc})}
     ev.push({summary:'時差ほどき｜就寝',startTime:at(b),endTime:at(b+15),timeZone:r.zone,colorId:'9',rem:30,desc});
   }
   return ev;
@@ -1760,6 +1769,7 @@ window.planCard=planCard;
 /* 計画が変わるたびにカードも描き直す */
 const _r=render;render=function(){_r();planCard()};
 window.startPlan=start;
+try{const cb=$('notifAll');cb.checked=LS('jisa-notif-all')==='1';cb.onchange=()=>{LS('jisa-notif-all',cb.checked?'1':'0');render()}}catch(e){}
 render();
 if(!LS('jisa-onboarded')&&!hadData)onboard();
 })();
