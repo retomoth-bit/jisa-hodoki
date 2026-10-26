@@ -507,7 +507,7 @@ input,select{background:#0A0A09;border-color:#2A2927;border-radius:3px}
       <fieldset class="cal">
         <legend>通知</legend>
         <div id="pushBox" class="pushbox" hidden>
-          <p class="hint">「光を浴びる」「光を避ける」「就寝」の時刻に、スマホに通知が届く。</p>
+          <p class="hint">「光を浴びる」と「就寝」の時刻に、スマホに通知が届く。</p>
           <div id="iosGuide" class="guidebox" hidden>
             <b>通知を受け取るには、まずホーム画面に追加</b>
             <ol><li>画面下の共有ボタン（四角に上向き矢印）を押す</li><li>「ホーム画面に追加」を選ぶ</li><li>ホーム画面の「時差ほどき」から開き直す</li></ol>
@@ -644,7 +644,11 @@ function makeDay(o){
     r.notes=[...(o.notes||[]),...extra];
     if(len(r.seekOut)>=30){const[a,b]=lightDose(o.iso,o.city,r.seekOut);r.lightTxt=`晴れなら${a}分、曇りなら${b}分`;r.lightMin=[a,b]}}
   /* 入浴：就寝の90分前（1〜2時間前に40〜42℃で10分）。機内と、到着前・出発後の時間には置かない */
-  {const t=bathAt(o.bed);const blocked=o.flight||(o.blank||[]).some(([s,e])=>t>=s&&t<e);r.bath=blocked?null:t;
+  {/* 入浴は就寝の2時間前〜1時間前。夜に光を浴びる日は、光が終わってから */
+   const rel=x=>sdiff(x,o.bed);let st=-120;
+   for(const[,e]of(r.seek||[])){const q=rel(e);if(q>st&&q<=-60)st=q}
+   const t=mod(o.bed+st),te=mod(o.bed-60);
+   const blocked=o.flight||(o.blank||[]).some(([s,e])=>t>=s&&t<e);r.bath=blocked?null:t;r.bathEnd=blocked?null:te;
    const cl=o.city&&o.iso?clim(o.city.name,o.iso):null;r.bathShower=!!(cl&&cl[0]>=30)}
   const cEnd=o.bed-480;r.caff=sdiff(cEnd,o.wake)>60?fmt(cEnd)+'まで':'控える';
   r.sleepTxt=`${fmt(o.bed)} → 翌${fmt(o.nextWake??o.wake)}`;
@@ -798,7 +802,7 @@ function tzOff(zone,ms){const p={};new Intl.DateTimeFormat('en-US',{timeZone:zon
   return Math.round((Date.UTC(+p.year,+p.month-1,+p.day,+p.hour%24,+p.minute)-Math.floor(ms/6e4)*6e4)/6e4)}
 
 /* 入浴の時刻：なるべく22:00ごろ。ただし就寝の90分〜3時間前の範囲で（入浴から就寝まで61〜180分で寝つきが速い） */
-function bathAt(bed){const gap=Math.max(90,Math.min(180,sdiff(bed,22*60)));return mod(bed-gap)}
+function bathAt(bed){return mod(bed-120)}
 /* 太陽高度（度）。localMin は現地時刻の分 */
 function sunElev(iso,c,localMin){
   const[y,m,d]=iso.split('-').map(Number);const noon=Date.UTC(y,m-1,d,12);
@@ -1117,7 +1121,7 @@ function dayHTML(r){
   if(len(r.seek))det.push(`<span class="s"><em>光を浴びる</em><span class="t">${ivs(r.seek)}</span>${r.lightMin?`<em class="dose">晴${r.lightMin[0]}分・曇${r.lightMin[1]}分</em>`:''}</span>`);
   if(len(r.avoid))det.push(`<span><em>光を避ける</em><span class="t">${ivs(r.avoid)}</span></span>`);
   if(len(r.ex||[]))det.push(`<span><em>運動・早歩き</em><span class="t">${ivs(r.ex)}</span></span>`);
-  if(r.bath!=null)det.push(`<span class="b"><em>入浴</em><span class="t">${fmt(r.bath)}</span></span>`);
+  if(r.bath!=null)det.push(`<span class="b"><em>入浴</em><span class="t">${fmt(r.bath)}–${fmt(r.bathEnd)}</span></span>`);
   if(r.meals.length)det.push(`<span><em>食事</em><span class="t">${r.meals.map(m=>fmt(m.t)).join(' / ')}</span></span>`);
   if(!r.flight&&r.caff)det.push(`<span><em>カフェイン</em><span class="t">${r.caff}</span></span>`);
   const cur=r.cur?`<div class="curlab">今</div>${track({sleep:r.cur},'cur')}<div class="curlab">提案</div>`:'';
@@ -1191,7 +1195,7 @@ function eventsFor(groups){if(window.PLAN_ON===false)return[];
     for(const[s,e]of pieces(r.seekOut))ev.push({summary:'時差ほどき｜外で光を浴びる',startTime:at(s),endTime:at(e),timeZone:r.zone,colorId:'5',rem:0,desc});
     if(full)for(const[s,e]of pieces(r.avoid))ev.push({summary:'時差ほどき｜光を避ける',startTime:at(s),endTime:at(e),timeZone:r.zone,colorId:'8',rem:5,desc});
     const b=mod(r.bed)<mod(r.wake)?mod(r.bed)+M:mod(r.bed);
-    if(full&&r.bath!=null){const bt=mod(r.bath)<mod(r.wake)?mod(r.bath)+M:mod(r.bath);ev.push({summary:'時差ほどき｜入浴',startTime:at(bt),endTime:at(bt+10),timeZone:r.zone,colorId:'3',rem:10,desc})}
+    if(full&&r.bath!=null){const bt=mod(r.bath)<mod(r.wake)?mod(r.bath)+M:mod(r.bath);ev.push({summary:'時差ほどき｜入浴',startTime:at(bt),endTime:at(bt+sdiff(r.bathEnd,r.bath)),timeZone:r.zone,colorId:'3',rem:10,desc})}
     ev.push({summary:'時差ほどき｜就寝',startTime:at(b),endTime:at(b+15),timeZone:r.zone,colorId:'9',rem:30,desc});
   }
   return ev;
@@ -1255,7 +1259,7 @@ let pushId=null,pushTimer=null,deferredInstall=null;
 try{pushId=localStorage.getItem('jisa-push-id')}catch(e){}
 function pushEvents(groups){
   return eventsFor(groups).map(e=>{const s=e.startTime.slice(11,16),t=e.endTime.slice(11,16),kind=e.summary.replace('時差ほどき｜','');
-    const body=kind==='入浴'?`${s}に入浴。40〜42℃の湯に10分（なければ熱めのシャワー）`:kind==='就寝'?`${s}に就寝。照明を落として準備を`:kind==='光を避ける'?`${s}–${t}。サングラスか、照明を暗めに`
+    const body=kind==='入浴'?`${s}–${t}のあいだに入浴。40〜42℃の湯に10分（なければ熱めのシャワー）`:kind==='就寝'?`${s}に就寝。照明を落として準備を`:kind==='光を避ける'?`${s}–${t}。サングラスか、照明を暗めに`
       :kind==='照明で光を浴びる'?`${s}–${t}。外は暗いので照明を全開に`:`${s}–${t}。外に出て光を浴びる`;
     return{at:localToUtc(e.startTime,e.timeZone)-e.rem*6e4,title:kind,body,tag:kind}}).filter(x=>x.at>Date.now()-6e4);
 }
@@ -1461,7 +1465,7 @@ function buildItems(r){
   for(const[s,e]of merged(r.avoid))push('avoid',s,e);
   for(const[s,e]of merged(r.ex||[]))push(r._walk?'walk':'ex',s,e);
   for(const m of r.meals)push('meal',off(m.t),null,{label:m.n==='朝'?'朝食':m.n==='昼'?'昼食':'夕食'});
-  if(r.bath!=null)push('bath',off(r.bath),null);
+  if(r.bath!=null)push('bath',off(r.bath),off(r.bath)+sdiff(r.bathEnd,r.bath));
   push('sleep',off(mod(r.bed)),null,r._early?{note:'いつもより30分早く'}:{});
   if(r.arr!=null)push('arr',r.arr,null);if(r.dep!=null)push('dep',r.dep,null);
   return items.sort((a,b)=>a.s-b.s);
@@ -1572,9 +1576,9 @@ function render(){
   el('tDial').innerHTML=dial(r,lp.min,est);
   const tl=ms=>fmt(localParts(ms,r.zone).min);
   const act=items.filter(x=>!['arr','dep'].includes(x.k));
-  const cur=act.find(x=>x.e&&x.s<=nowUtc&&x.e>nowUtc&&['seek','seekIn','avoid','ex','walk'].includes(x.k));const nxt=act.find(x=>x.s>nowUtc);const it=cur||nxt;
+  const cur=act.find(x=>x.e&&x.s<=nowUtc&&x.e>nowUtc&&['seek','seekIn','avoid','ex','walk','bath'].includes(x.k));const nxt=act.find(x=>x.s>nowUtc);const it=cur||nxt;
   const name=x=>x.label||KIND[x.k].n;
-  const tip=x=>x.k==='seek'?`外に出る。${r.lightTxt||'晴れなら15分、曇りなら30分'}。曇りでも室内よりずっと明るい。`:x.k==='bath'?(r.bathShower?'暑い土地なので、湯船より10分のシャワーで十分。上がったら照明を落としていく。':'40〜42℃の湯に10分。湯船がなければ熱めのシャワーを10分。上がったら照明を落としていく。'):TIP[x.k];
+  const tip=x=>x.k==='seek'?`外に出る。${r.lightTxt||'晴れなら15分、曇りなら30分'}。曇りでも室内よりずっと明るい。`:x.k==='bath'?(r.bathShower?'暑い土地なので、湯船より10分のシャワーで十分。上がったら照明を落としていく。':'就寝の2時間前〜1時間前のどこかで、40〜42℃の湯に10分。湯船がなければ熱めのシャワーを10分。上がったら照明を落としていく。'):TIP[x.k];
   const nx=el('tNext');nx.className='t-next'+(cur?' now':'');
   nx.innerHTML=it?`<small>${cur?'いま':'次にやること'}</small><div class="what"><b>${name(it)}</b><span>${tl(it.s)}${it.e?'–'+tl(it.e):''}</span></div><div class="left">${cur?left(it.e-nowUtc)+'まで':left(it.s-nowUtc)}</div>${tip(it)?`<div class="tip">${tip(it)}</div>`:''}`:'<small>次にやること</small><div class="what"><b>今日の予定は終わり</b></div>';
   el('tList').innerHTML=`<h4>今日の予定（${est.src||rec.lv!=null?'今朝の答えで組み直し':'移動の予定から計算'}）</h4>`+items.map(x=>`<div class="t-row${(x.e||x.s)<nowUtc?' past':''}"><span class="tm">${tl(x.s)}${x.e?'–'+tl(x.e):''}</span><i style="background:${KIND[x.k].c}"></i><span>${name(x)}${x.note?`<em>${x.note}</em>`:''}</span></div>`).join('')
@@ -1762,8 +1766,8 @@ function planCard(){
   if(mode==='early')line=`${md(new Date($('eDate').value+'T00:00:00Z'))} ${$('eWake').value} 起き・${MODE[$('eBy').value]?MODE[$('eBy').value].n:''}`;
   if(mode==='weekend')line=lastPlan.summary[0][1]+'<br><span>'+lastPlan.summary[0][2]+'</span>';
   c.innerHTML=`<small>${MODE_N[mode]}</small><b>${line}</b><div class="pl-btns"><button type="button" class="ghost" id="plEdit">作り直す</button><button type="button" class="linkbtn" id="plDel">計画を消す</button></div>`;
-  $('plEdit').onclick=()=>start(mode);
-  $('plDel').onclick=()=>{window.PLAN_ON=false;LS('jisa-plan','0');try{if(pushId)pushStop()}catch(e){}render();planCard()};
+  $('plEdit').onclick=()=>{stack=[];step(()=>{sheet('どんな計画を作りますか',choices([['intl','海外へ行く','時差のある場所への移動'],['early','朝早く出る','新幹線の始発や早朝便'],['weekend','休みのずれを整える','週末や連休の寝坊を戻す']]),{next:null,back:false});onChoice(v=>start(v))})};
+  $('plDel').onclick=e=>{const b=e.currentTarget;if(!b.dataset.sure){b.dataset.sure='1';b.textContent='もう一度押すと消えます';setTimeout(()=>{if(b.isConnected){delete b.dataset.sure;b.textContent='計画を消す'}},4000);return}window.PLAN_ON=false;LS('jisa-plan','0');try{if(pushId)pushStop()}catch(e){}render();planCard()};
 }
 window.planCard=planCard;
 /* 計画が変わるたびにカードも描き直す */
