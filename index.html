@@ -251,6 +251,42 @@ input[type=range]{padding:0;background:transparent;border:0;accent-color:var(--s
 .t-bn span{flex:1;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .t-bn em{font-style:normal;font-size:12px;color:var(--t-mut);white-space:nowrap}
 
+/* ---------- 計画タブ・設定タブ ---------- */
+#pSet #f .modes,#pSet #f fieldset[data-for]{display:none!important}
+.pl-card{display:grid;gap:6px;padding:14px 16px;border:1px solid var(--t-line);border-radius:4px;background:var(--t-sf)}
+.pl-card small{font-size:11px;letter-spacing:.1em;color:var(--t-mut)}
+.pl-card b{font-size:18px;font-weight:500;line-height:1.5}
+.pl-card b span{font-size:13px;color:var(--t-mut);font-weight:400}
+.pl-btns{display:flex;gap:14px;align-items:center;margin-top:6px}
+.pl-h{font-family:var(--f-display);font-weight:500;font-size:15px;letter-spacing:.08em;margin:8px 0 -6px;color:var(--t-mut)}
+.pl-more{border:1px solid var(--t-line);border-radius:4px;padding:10px 14px;background:var(--t-sf)}
+.pl-more summary{cursor:pointer;color:var(--t-mut);font-size:13px}
+.pl-more[open]{display:grid;gap:14px}
+/* ---------- 1画面に1問の設定 ---------- */
+.wz{position:fixed;inset:0;z-index:50;background:#0A0A09;display:flex;justify-content:center;overflow-y:auto}
+.wz-box{width:100%;max-width:440px;padding:calc(16px + env(safe-area-inset-top,0px)) 20px calc(28px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:16px;min-height:100%}
+.wz-top{display:flex;justify-content:space-between;align-items:center;min-height:32px}
+.wz-back,.wz-x,.wz-skip{font:inherit;background:none;border:0;color:var(--t-mut);font-size:15px;cursor:pointer;padding:6px 0}
+.wz-x{font-size:22px;line-height:1}
+.wz-q{font-family:var(--f-display);font-weight:500;font-size:24px;line-height:1.5;margin:18px 0 0;letter-spacing:.04em}
+.wz-sub{margin:-6px 0 0;font-size:13px;color:var(--t-mut)}
+.wz-body{display:grid;gap:14px}
+.wz-body input,.wz-body select{font-size:18px;padding:12px;background:#0A0A09;border:1px solid #2A2927;border-radius:4px;color:var(--t-ink)}
+.wz-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.wz-row label,.wz-l{display:grid;gap:6px;font-size:13px;color:var(--t-mut)}
+.wz-choices{display:grid;gap:10px}
+.wz-choices button{font:inherit;text-align:left;display:grid;gap:2px;padding:14px 16px;background:#121211;border:1px solid #2A2927;border-radius:4px;color:var(--t-ink);cursor:pointer}
+.wz-choices button b{font-size:17px;font-weight:500}
+.wz-choices button span{font-size:12.5px;color:var(--t-mut)}
+.wz-choices button[aria-pressed="true"]{border-color:#ECE8E0;background:#1A1A18}
+.wz-next{font:inherit;font-size:16px;margin-top:auto;padding:14px;border:0;border-radius:4px;background:#ECE8E0;color:#0A0A09;cursor:pointer}
+.wz-skip{align-self:center}
+.wz-sum{margin:0;font-size:16px;line-height:1.8}
+.wz-adv summary{color:var(--t-mut);font-size:13px;cursor:pointer}
+.wz-adv[open]{display:grid;gap:8px}
+.wz-err{margin:0;color:#D9876F;font-size:13px}
+.pl-card .wz-choices{margin-top:6px}
+
 /* ---------- 試作：石膏と紙の質感 ---------- */
 :root{--bg:#0A0A09;--surface:#141413;--ink:#ECE8E0;--muted:#8A8780;--line:#262523;--track:#1A1A18;
   --t-bg:#0A0A09;--t-sf:#141413;--t-sf2:#141413;--t-ink:#ECE8E0;--t-mut:#8A8780;--t-line:#262523;--t-sun:#ECE8E0;--t-sunlo:#ECE8E0;--t-ok:#2F4A35;--t-warn:#8A2E18;
@@ -403,8 +439,14 @@ input,select{background:#0A0A09;border-color:#2A2927;border-radius:3px}
     </div>
   </div>
 
-  <div class="tabp" id="pTrip" hidden>
-    <p class="intro">体内時計の位置を推定して、光・食事・睡眠の時刻を日ごとに組み立てる。海外移動も、早朝出発も、週末のずれも同じ仕組みで扱う。</p>
+  <div class="tabp" id="pPlan" hidden>
+    <section class="pl-card" id="planCard"></section>
+    <div class="out" id="outTrip"></div>
+    <h3 class="pl-h" id="daysHead">全日程</h3>
+    <div class="out" id="outDays"></div>
+  </div>
+
+  <div class="tabp" id="pSet" hidden>
     <form class="panel" id="f" autocomplete="off">
       <div class="modes" role="group" aria-label="モード">
         <button type="button" data-mode="intl" aria-pressed="true">海外移動</button>
@@ -478,11 +520,8 @@ input,select{background:#0A0A09;border-color:#2A2927;border-radius:3px}
         <p class="calstatus" id="calStatus" role="status"></p>
       </fieldset>
     </form>
-    <div class="out" id="outTrip"></div>
-  </div>
-
-  <div class="tabp" id="pDays" hidden>
-    <div class="out" id="outDays"></div>
+    <details class="pl-more"><summary>このアプリの考え方と根拠</summary>
+    <p class="intro">体内時計の位置を推定して、光・食事・睡眠の時刻を日ごとに組み立てる。海外移動も、早朝出発も、休みのずれも同じ仕組みで扱う。</p>
     <div class="guide">
     <section>
       <h3>軸は「体温最低点」</h3>
@@ -527,10 +566,13 @@ input,select{background:#0A0A09;border-color:#2A2927;border-radius:3px}
       <li><b>メラトニン</b>：Herxheimer A, Petrie KJ. <i>Cochrane Database Syst Rev</i> 2002;(2):CD001520. doi:10.1002/14651858.CD001520</li>
     </ul>
   </section>
+    </details>
     <p class="foot">推定は一般的な生理モデルにもとづく目安。持病や服薬がある場合、交代勤務の人は医師に相談を。入力内容はこのブラウザにだけ保存される。</p>
   </div>
 
-  <nav class="t-tabs" aria-label="画面"><div><button type="button" data-tab="today" aria-current="page">今日</button><button type="button" data-tab="trip" aria-current="false">旅程</button><button type="button" data-tab="days" aria-current="false">全日程</button></div></nav>
+  <div class="wz" id="wz" hidden><div class="wz-box" role="dialog" aria-modal="true" id="wzBox"></div></div>
+
+  <nav class="t-tabs" aria-label="画面"><div><button type="button" data-tab="today" aria-current="page">今日</button><button type="button" data-tab="plan" aria-current="false">計画</button><button type="button" data-tab="set" aria-current="false">設定</button></div></nav>
 </div>
 
 <script>
@@ -1126,7 +1168,7 @@ function downloadICS(ev){
   calStatus(`${ev.length}件の予定を保存しました。上の説明のとおりに取り込んでください。`);
 }
 function getMcp(){if(!mcpP)mcpP=(window.claude&&window.claude.use)?window.claude.use('mcp').catch(()=>null):Promise.resolve(null);return mcpP}
-function eventsFor(groups){
+function eventsFor(groups){if(window.PLAN_ON===false)return[];
   const ev=[];
   for(const g of groups||[])for(const r of g.days){
     if(!r.iso||r.flight)continue;
@@ -1289,6 +1331,7 @@ function estHours(a,b,by){const A=city(a),B=city(b),R=6371,t=Math.PI/180,md=MODE
   const km=2*R*Math.asin(Math.sqrt(h));return Math.max(0.5,Math.round((km/md.kmh+md.pad)*2)/2)}
 function plusDays(iso,n){const d=new Date(iso+'T00:00:00Z');return isoD(addDays(d,n))}
 function init(){
+  try{window.__FIRST=!localStorage.getItem('jisa-hodoki')}catch(e){window.__FIRST=false}
   CITY_OPTS=REGIONS.map(r=>`<optgroup label="${r}">${CITIES.filter(c=>c[4]===r).map(([n])=>`<option value="${n}">${n}</option>`).join('')}</optgroup>`).join('');
   $('origin').innerHTML=CITY_OPTS;$('origin').value='東京';
   try{const s=JSON.parse(localStorage.getItem('jisa-hodoki')||'null');if(s){FIELDS.forEach(k=>{if(s[k]!=null&&s[k]!=='')$(k).value=s[k]});mode=s.mode||mode;
@@ -1475,12 +1518,12 @@ function render(){
   if(!el('pToday'))return;
   /* 旅の前・旅のあと・旅程なし：ふだんの一日を円に描き、上に一行だけ添える */
   let r0=null,banner='';
-  if(!lastPlan||!rows.length){r0=homeRow();banner=`<button type="button" class="t-bn" data-go="trip"><small>ふだんの一日</small><span>移動の予定を入れる</span><em>›</em></button>`}
+  if(window.PLAN_ON===false||!lastPlan||!rows.length){r0=homeRow();banner=`<button type="button" class="t-bn" data-go="plan"><small>ふだんの一日</small><span>計画を作る</span><em>›</em></button>`}
   else{
     const fl=flights.find(f=>nowUtc>=f.depUtc&&nowUtc<f.arrUtc);
     if(fl){stateCard(fl.tag,`<small>${fl.tag}　${left(fl.arrUtc-nowUtc)}で到着</small><b>${fl.title}</b><ul class="notes">${fl.notes.map(n=>`<li>${typeof n==='string'?n:n.t}</li>`).join('')}</ul>`);return}
-    if(nowUtc<t0){r0=homeRow();const f=rows[0];banner=`<button type="button" class="t-bn" data-go="days"><small>次の予定</small><span>${f.tag}　${f.date}</span><em>${left(t0-nowUtc)}　›</em></button>`}
-    else{r0=currentRow();if(!r0||nowUtc>t1){r0=homeRow();banner=`<button type="button" class="t-bn" data-go="trip"><small>旅のあと</small><span>今回の予定はすべて終わりました</span><em>›</em></button>`}}
+    if(nowUtc<t0){r0=homeRow();const f=rows[0];banner=`<button type="button" class="t-bn" data-go="plan"><small>次の予定</small><span>${f.tag}　${f.date}</span><em>${left(t0-nowUtc)}　›</em></button>`}
+    else{r0=currentRow();if(!r0||nowUtc>t1){r0=homeRow();banner=`<button type="button" class="t-bn" data-go="plan"><small>旅のあと</small><span>今回の予定はすべて終わりました</span><em>›</em></button>`}}
   }
   el('tBanner').hidden=!banner;el('tBanner').innerHTML=banner;
   el('tLive').hidden=false;el('tState').hidden=true;
@@ -1551,6 +1594,7 @@ function rebuild(){
   }
 }
 document.addEventListener('click',e=>{const g=e.target.closest('#gClock');if(!g)return;const m=g.querySelector('.more');if(m)m.hidden=!m.hidden});
+window.showTab=t=>show(t);
 window.todayRefresh=function(){if(!started)return;rebuild();render()};
 function start(){
   started=true;
@@ -1563,13 +1607,161 @@ function start(){
   rebuild();render();
 }
 /* タブ */
-function show(tab){
+function show(tab){tab=({trip:'plan',days:'plan'})[tab]||tab;
   document.querySelectorAll('.tabp').forEach(p=>p.hidden=p.id!=='p'+tab[0].toUpperCase()+tab.slice(1));
   document.querySelectorAll('.t-tabs button').forEach(b=>b.setAttribute('aria-current',b.dataset.tab===tab?'page':'false'));
   window.scrollTo(0,0);
 }
 document.addEventListener('click',e=>{const b=e.target.closest('[data-tab],[data-go]');if(!b)return;show(b.dataset.tab||b.dataset.go)});
 start();
+})();
+
+/* ---------- はじめての設定と、計画づくり（1画面に1問） ---------- */
+(function(){
+const LS=(k,v)=>{try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v)}catch(e){return null}};
+const hadData=!window.__FIRST;
+/* 計画があるか。前から使っている人は「ある」とみなす */
+window.PLAN_ON=LS('jisa-plan')!=null?LS('jisa-plan')==='1':hadData;
+if(!hadData){legs=[];renderLegs()}            // 見本の旅程は入れない
+const wz=$('wz'),box=$('wzBox');
+const todayIso=()=>{const z=city($('origin').value).zone,p={};new Intl.DateTimeFormat('en-CA',{timeZone:z,year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date()).forEach(x=>p[x.type]=x.value);return`${p.year}-${p.month}-${p.day}`};
+const MODE_N={intl:'海外へ行く',early:'朝早く出る',weekend:'休みのずれを整える'};
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* 画面を1枚出す。q：問い、body：中身、next：次へ（null なら出さない） */
+let stack=[];
+function sheet(q,body,{next,nextLabel='次へ',back=true,sub=''}={}){
+  wz.hidden=false;document.body.style.overflow='hidden';
+  box.innerHTML=`<div class="wz-top">${back&&stack.length>1?'<button type="button" class="wz-back">‹ 戻る</button>':'<span></span>'}<button type="button" class="wz-x" aria-label="閉じる">×</button></div>
+    <h2 class="wz-q">${q}</h2>${sub?`<p class="wz-sub">${sub}</p>`:''}<div class="wz-body">${body}</div>
+    ${next?`<button type="button" class="wz-next">${nextLabel}</button>`:''}`;
+  box.querySelector('.wz-x').onclick=close;
+  const bk=box.querySelector('.wz-back');if(bk)bk.onclick=()=>{stack.pop();stack.pop()();};
+  if(next)box.querySelector('.wz-next').onclick=next;
+  const f=box.querySelector('input,select');if(f&&!('ontouchstart' in window))f.focus();
+}
+const step=fn=>{stack.push(fn);fn()};
+function close(){wz.hidden=true;document.body.style.overflow='';stack=[];render();planCard()}
+const choices=(list)=>`<div class="wz-choices">${list.map(([v,t,s])=>`<button type="button" data-v="${v}"><b>${t}</b>${s?`<span>${s}</span>`:''}</button>`).join('')}</div>`;
+const onChoice=fn=>box.querySelectorAll('.wz-choices button').forEach(b=>b.onclick=()=>fn(b.dataset.v));
+const val=id=>box.querySelector('#'+id).value;
+
+/* ---- はじめての3問 ---- */
+function onboard(){
+  stack=[];
+  step(()=>sheet('いつも何時に寝て、<br>何時に起きますか',`<div class="wz-row"><label>寝る<input type="time" id="w_bed" value="${$('bed').value}" step="900"></label><label>起きる<input type="time" id="w_wake" value="${$('wake').value}" step="900"></label></div>`,
+    {sub:'目覚ましなしで起きる日の時刻が、いちばん正確です。',back:false,next:()=>{$('bed').value=val('w_bed')||'23:30';$('wake').value=val('w_wake')||'07:00';step(place)}}));
+  function place(){sheet('どこに住んでいますか',`<select id="w_home">${CITY_OPTS}</select>`,{sub:'いちばん近い都市を選んでください。',next:()=>{$('origin').value=val('w_home');syncLegFrom();step(purpose)}});box.querySelector('#w_home').value=$('origin').value}
+  function purpose(){sheet('何に使いますか',choices([['intl','海外へ行く','時差のある場所への移動'],['early','朝早く出る','新幹線の始発や早朝便'],['weekend','休みのずれを整える','週末や連休の寝坊を戻す'],['later','あとで決める','まずは、ふだんの一日を見る']]),{next:null});
+    onChoice(v=>{LS('jisa-onboarded','1');save(read());if(v==='later'){close();showTab('today')}else start(v)})}
+}
+
+/* ---- 計画づくり ---- */
+let draft=null;
+function start(m){
+  stack=[];draft={mode:m,legs:[]};
+  if(m==='intl')step(()=>legDest(0));
+  if(m==='early')step(earlyDate);
+  if(m==='weekend')step(wkBreak);
+}
+/* 海外：行き先 → 日時 → 手段 → 次は？ */
+function legFromName(i){return i?draft.legs[i-1].to:$('origin').value}
+function legDest(i){
+  const L=draft.legs[i]||(draft.legs[i]={to:'',by:'air',date:'',time:'10:00'});
+  sheet(i?`${esc(legFromName(i))} の次は、どこへ？`:'どこへ行きますか',`<select id="w_to">${CITY_OPTS}</select>`,{next:()=>{const t=val('w_to');if(t===legFromName(i)){alertMsg('出発地と同じ場所は選べません');return}L.to=t;step(()=>legWhen(i))}});
+  box.querySelector('#w_to').value=L.to||(i?$('origin').value:'パリ');
+}
+function legWhen(i){
+  const L=draft.legs[i],prev=draft.legs[i-1];
+  if(!L.date)L.date=prev?plusDays(prev.date,4):plusDays(todayIso(),7);
+  sheet(`${esc(L.to)} へ出発するのは`,`<div class="wz-row"><label>日にち<input type="date" id="w_date" value="${L.date}"></label><label>時刻<input type="time" id="w_time" value="${L.time}" step="300"></label></div>`,
+    {sub:`${esc(legFromName(i))} の時刻で入れてください。`,next:()=>{L.date=val('w_date');L.time=val('w_time')||'10:00';if(prev&&L.date<prev.date){alertMsg('前の移動より前の日にちになっています');return}step(()=>legBy(i))}});
+}
+function legBy(i){
+  const L=draft.legs[i];
+  const by0=L.by||'air',h0=L.manual?L.hours:estHours(legFromName(i),L.to,by0);
+  sheet('何で移動しますか',`${choices(Object.entries(MODE).map(([k,v])=>[k,v.n,'']))}<label class="wz-l">移動時間（乗り継ぎ込み・時間）<input type="number" id="w_hours" min="0.5" max="72" step="0.5" value="${h0}"></label>`,
+    {sub:'移動時間は目安が入ります。実際の時間に直せます。',next:()=>{const h=+val('w_hours');L.hours=h>0?h:estHours(legFromName(i),L.to,L.by);L.manual=h>0&&h!==estHours(legFromName(i),L.to,L.by);step(()=>legAfter(i))}});
+  const mark=v=>box.querySelectorAll('.wz-choices button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===v)));
+  L.by=by0;mark(by0);
+  onChoice(v=>{L.by=v;mark(v);if(!L.manual)box.querySelector('#w_hours').value=estHours(legFromName(i),L.to,v)});
+}
+function legAfter(i){
+  const L=draft.legs[i],home=$('origin').value,isHome=L.to===home;
+  if(isHome){step(intlFinish);return}
+  sheet(`${esc(L.to)} のあとは`,choices([['home',`${esc(home)} に戻る`,'帰りの移動を入れる'],['next','別の場所へ行く','A→B→C のように続ける'],['none','まだ決めない','行きだけで計画する']]),{next:null});
+  onChoice(v=>{
+    if(v==='none'){draft.legs.length=i+1;step(intlFinish);return}
+    draft.legs.length=i+1;
+    if(v==='home'){draft.legs[i+1]={to:home,by:L.by,date:plusDays(L.date,5),time:'19:00'};step(()=>legWhen(i+1))}
+    else step(()=>legDest(i+1));
+  });
+}
+function intlFinish(){
+  const route=[$('origin').value,...draft.legs.map(l=>l.to)].join(' → ');
+  sheet('これで計画を作ります',`<p class="wz-sum">${esc(route)}<br>${draft.legs.map(l=>`${md(new Date(l.date+'T00:00:00Z'))} ${l.time} 発・${MODE[l.by].n}・${l.hours}時間`).join('<br>')}</p>
+    <details class="wz-adv"><summary>細かく調整</summary><label class="wz-l">出発前の準備日数 <span id="w_pv">${$('prep').value}日</span><input type="range" id="w_prep" min="0" max="7" value="${$('prep').value}"></label><p class="wz-sub">出発の数日前から、少しずつ体内時計を動かします。ふつうは3日。</p></details>`,
+    {nextLabel:'計画を作る',next:()=>{$('prep').value=val('w_prep');
+      legs=draft.legs.map(l=>({to:l.to,by:l.by,date:l.date,time:l.time,hours:l.hours,manual:!!l.manual}));renderLegs();commit('intl')}});
+  box.querySelector('#w_prep').oninput=e=>box.querySelector('#w_pv').textContent=e.target.value+'日';
+}
+/* 早朝：日付 → 起きる時刻 → 手段 */
+function earlyDate(){sheet('朝早く出る日は',`<input type="date" id="w_ed" value="${$('eDate').value>todayIso()?$('eDate').value:plusDays(todayIso(),3)}">`,{next:()=>{draft.eDate=val('w_ed');step(earlyWake)}})}
+function earlyWake(){sheet('その日は何時に起きますか',`<input type="time" id="w_ew" value="${$('eWake').value}" step="900">`,{sub:`ふだんは ${$('wake').value} 起き。前の日までに、起きる時刻を少しずつ早めます。`,next:()=>{draft.eWake=val('w_ew');step(earlyBy)}})}
+function earlyBy(){sheet('何で移動しますか',choices([['rail','新幹線・電車'],['air','飛行機'],['bus','バス'],['car','車（自分で運転）'],['ship','船']].map(([k,t])=>[k,t,''])),{next:null});
+  onChoice(v=>{$('eDate').value=draft.eDate;$('eWake').value=draft.eWake;$('eBy').value=v;commit('early')})}
+/* 休み：次の休みを見せる → 休みの日の睡眠 */
+function wkBreak(){
+  $('weFrom').value='';$('weTo').value='';
+  let txt='';try{const p=planWeekend(read());txt=p.summary[0][1]+'　'+p.summary[0][2]}catch(e){}
+  sheet('次の休みは',`<p class="wz-sum">${esc(txt)}</p>${choices([['ok','この休みで作る',''],['own','期間を自分で入れる','有給でつなげる、年末年始など']])}`,{sub:'土日と祝日から見つけました。',next:null});
+  onChoice(v=>{if(v==='ok')step(wkSleep);else step(wkOwn)});
+}
+function wkOwn(){sheet('休みの期間は',`<div class="wz-row"><label>初日<input type="date" id="w_f" value="${plusDays(todayIso(),1)}"></label><label>最終日<input type="date" id="w_t" value="${plusDays(todayIso(),3)}"></label></div>`,
+  {next:()=>{const f=val('w_f'),t=val('w_t');if(!f||!t||t<f){alertMsg('最終日は初日と同じか、あとの日にしてください');return}$('weFrom').value=f;$('weTo').value=t;step(wkSleep)}})}
+function wkSleep(){sheet('休みの日は、ふだん<br>何時に寝て何時に起きますか',`<div class="wz-row"><label>寝る<input type="time" id="w_wb" value="${$('weBed').value}" step="900"></label><label>起きる<input type="time" id="w_ww" value="${$('weWake').value}" step="900"></label></div>`,
+  {sub:`平日は ${$('bed').value} に寝て ${$('wake').value} に起きる設定です。`,nextLabel:'計画を作る',next:()=>{$('weBed').value=val('w_wb');$('weWake').value=val('w_ww');commit('weekend')}})}
+
+function commit(m){
+  mode=m;window.PLAN_ON=true;LS('jisa-plan','1');LS('jisa-onboarded','1');
+  render();
+  const ok=lastPlan&&lastPlan.groups&&lastPlan.groups.length;
+  if(!ok){alertMsg('計画を作れませんでした。入力を見直してください');return}
+  step(notify);
+}
+/* 完成 → 通知をすすめる */
+function notify(){
+  const can=!IN_CLAUDE&&PUSH_CAPABLE(),ios=IS_IOS&&!STANDALONE;
+  const n=pushEvents(lastPlan.groups).length;
+  if(IN_CLAUDE||!PUSH_API){sheet('計画ができました',`<p class="wz-sum">「今日」に、今日やることが出ます。日ごとの予定は「計画」で見られます。</p>`,{nextLabel:'今日を見る',back:false,next:()=>{close();showTab('today')}});return}
+  if(ios){sheet('計画ができました',`<p class="wz-sum">光を浴びる・避ける・入浴・就寝の時刻に、スマホへお知らせできます。</p><div class="guidebox"><b>お知らせを受け取るには、まずホーム画面に追加</b><ol><li>画面下の共有ボタン（四角に上向き矢印）を押す</li><li>「ホーム画面に追加」を選ぶ</li><li>ホーム画面の「時差ほどき」から開き直す</li></ol></div>`,{nextLabel:'今日を見る',back:false,next:()=>{close();showTab('today')}});return}
+  sheet('計画ができました',`<p class="wz-sum">光を浴びる・避ける・入浴・就寝の時刻に、スマホへお知らせしますか（${n}件）</p>`,{back:false,nextLabel:'お知らせを受け取る',next:async()=>{await pushStart();close();showTab('today')}});
+  const b=document.createElement('button');b.type='button';b.className='wz-skip';b.textContent='あとで';b.onclick=()=>{close();showTab('today')};box.appendChild(b);
+  if(!can)box.querySelector('.wz-next').remove();
+}
+function alertMsg(t){let m=box.querySelector('.wz-err');if(!m){m=document.createElement('p');m.className='wz-err';box.querySelector('.wz-body').after(m)}m.textContent=t}
+
+/* ---- 計画タブのカード ---- */
+function planCard(){
+  const c=$('planCard');if(!c)return;
+  const has=window.PLAN_ON&&lastPlan&&lastPlan.groups&&lastPlan.groups.length;
+  $('outTrip').hidden=$('outDays').hidden=$('daysHead').hidden=!has;
+  if(!has){c.innerHTML=`<small>計画</small><b>まだ計画はありません</b>${choices([['intl','海外へ行く','時差のある場所への移動'],['early','朝早く出る','新幹線の始発や早朝便'],['weekend','休みのずれを整える','週末や連休の寝坊を戻す']])}`;
+    c.querySelectorAll('.wz-choices button').forEach(b=>b.onclick=()=>start(b.dataset.v));return}
+  let line='';
+  if(mode==='intl')line=[$('origin').value,...legs.map(l=>l.to)].join(' → ')+(legs[0]?`<br><span>${md(new Date(legs[0].date+'T00:00:00Z'))} ${legs[0].time} 発</span>`:'');
+  if(mode==='early')line=`${md(new Date($('eDate').value+'T00:00:00Z'))} ${$('eWake').value} 起き・${MODE[$('eBy').value]?MODE[$('eBy').value].n:''}`;
+  if(mode==='weekend')line=lastPlan.summary[0][1]+'<br><span>'+lastPlan.summary[0][2]+'</span>';
+  c.innerHTML=`<small>${MODE_N[mode]}</small><b>${line}</b><div class="pl-btns"><button type="button" class="ghost" id="plEdit">作り直す</button><button type="button" class="linkbtn" id="plDel">計画を消す</button></div>`;
+  $('plEdit').onclick=()=>start(mode);
+  $('plDel').onclick=()=>{window.PLAN_ON=false;LS('jisa-plan','0');try{if(pushId)pushStop()}catch(e){}render();planCard()};
+}
+window.planCard=planCard;
+/* 計画が変わるたびにカードも描き直す */
+const _r=render;render=function(){_r();planCard()};
+window.startPlan=start;
+render();
+if(!LS('jisa-onboarded')&&!hadData)onboard();
 })();
 
 
