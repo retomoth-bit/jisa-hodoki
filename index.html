@@ -1058,51 +1058,62 @@ function jpHolidays(y){
 }
 const holName=(iso,jp)=>jp?jpHolidays(+iso.slice(0,4)).get(iso)||'':'';
 
-/* ---- 週末・連休のずれ ---- */
+/* ---- 休みのずれを、休み明けにいちばん早く戻す ---- */
+/* 戻したい休み：今日が休み・休み明け・その翌日ならその休み、それ以外は次の休み */
+function findBreak(st,home,jp){
+  const todayIso=(()=>{const p={};new Intl.DateTimeFormat('en-CA',{timeZone:home.zone,year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date()).forEach(x=>p[x.type]=x.value);return`${p.year}-${p.month}-${p.day}`})();
+  const D=iso=>new Date(iso+'T00:00:00Z'),isOff=d=>{const w=d.getUTCDay();return w===0||w===6||!!holName(isoD(d),jp)};
+  if(st.weFrom&&st.weTo&&st.weTo>=st.weFrom)return{s:D(st.weFrom),e:D(st.weTo),manual:true};
+  const t=D(todayIso);let e=null;
+  if(isOff(t))e=t;else if(isOff(addDays(t,-1)))e=addDays(t,-1);else if(isOff(addDays(t,-2))&&!isOff(addDays(t,-1)))e=addDays(t,-2);
+  if(!e){e=t;let g=0;while(!isOff(e)&&g++<14)e=addDays(e,1)}
+  while(isOff(addDays(e,1)))e=addDays(e,1);
+  let s=e;while(isOff(addDays(s,-1)))s=addDays(s,-1);
+  return{s,e,manual:false};
+}
 function planWeekend(st){
   const B=parseT(st.bed),W=parseT(st.wake),eB=parseT(st.weBed),eW=parseT(st.weWake),CBT0=cbt0(st,B,W);
   const mid=(b,w)=>mod(b+mod(w-b)/2);
-  const sjl=sdiff(mid(eB,eW),mid(B,W));
-  const dB=sdiff(eB,B),dW=sdiff(eW,W),lim=x=>Math.max(0,Math.min(x,60));
-  const pB=B+lim(dB),pWs=W+lim(dW),pWsun=W+Math.min(lim(dW),30);
-  const sjlNew=sdiff(mid(pB,pWs),mid(B,W));
-  const h=Math.abs(sjl)/60;
+  const drift=Math.max(0,sdiff(mid(eB,eW),mid(B,W)));          // 休みで後ろへずれた量（分）
+  const h=drift/60;
   const twin=h<=0.5?null:[[1.5,'台北'],[2.5,'バンコク'],[3.5,'ダッカ'],[5.5,'ドバイ'],[99,'ヨーロッパ']].find(c=>h<=c[0])[1];
   const home=city(st.origin),jp=home.zone==='Asia/Tokyo';
-  /* 次の休みのかたまり：手で入れた期間があればそれ、なければ土日と祝日から探す */
-  const todayIso=(()=>{const p={};new Intl.DateTimeFormat('en-CA',{timeZone:home.zone,year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date()).forEach(x=>p[x.type]=x.value);return`${p.year}-${p.month}-${p.day}`})();
-  const D=iso=>new Date(iso+'T00:00:00Z'),isOff=d=>{const w=d.getUTCDay();return w===0||w===6||!!holName(isoD(d),jp)};
-  let s,e,manual=false;
-  if(st.weFrom&&st.weTo&&st.weTo>=st.weFrom){s=D(st.weFrom);e=D(st.weTo);manual=true}
-  else{s=D(todayIso);let g=0;while(!isOff(s)&&g++<14)s=addDays(s,1);
-    while(isOff(addDays(s,-1)))s=addDays(s,-1);   // 今日が休みなら、その休みの初日から
-    e=s;while(isOff(addDays(e,1)))e=addDays(e,1);}
-  const n=dayIdx(e)-dayIdx(s)+1;
+  const bk=findBreak(st,home,jp),n=dayIdx(bk.e)-dayIdx(bk.s)+1;
   const tagOf=d=>{const hn=holName(isoD(d),jp);return`${WD[d.getUTCDay()]}曜${hn?'・'+hn:''}`};
-  const mk=(d,o,cur)=>({...makeDay({...o,date:md(d),iso:isoD(d),zone:home.zone,city:home,tz:''}),cur:sleepSegs(cur.pb,cur.w,cur.b)});
+  /* 1日に約1時間ずつ前へ戻す。2時間ずれていれば休み明けの2日目で元どおり */
+  const need=Math.max(1,Math.min(3,Math.ceil((drift-15)/60)));
+  const lateMax=Math.max(0,sdiff(eB,B));
+  const bedOn=k=>B+Math.max(0,Math.min(drift-60*(k+1),lateMax));   // k=0：休み最終日の夜
+  const mk=(d,o)=>makeDay({...o,date:md(d),iso:isoD(d),zone:home.zone,city:home,tz:''});
   const days=[];
-  const eve=addDays(s,-1);
-  days.push(mk(eve,{tag:'休み前',dir:0,cbt:CBT0,pb:B,wake:W,bed:pB,notes:[`夜更かしは${fmt(pB)}まで。夜の画面は暗めに`,'寝不足なら、遅く起きるのではなく早く寝て取り戻す']},{pb:B,w:W,b:eB}));
-  for(let i=0;i<n;i++){
-    const d=addDays(s,i),last=i===n-1,pre=n>=3&&i===n-2;
-    if(last)days.push(mk(d,{tag:tagOf(d)+'（休み最終日）',dir:1,cbt:CBT0+lim(dW),pb:pB,wake:pWsun,bed:B,notes:[`起床${fmt(pWsun)}。朝の光でここから休み明けへ戻し始める`,'昼寝は15時前に20分まで',`${fmt(B-120)}以降は照明を落とし、${fmt(B)}に寝る`]},{pb:eB,w:eW,b:eB}));
-    else if(pre)days.push(mk(d,{tag:tagOf(d),dir:1,cbt:CBT0+lim(dW),pb:pB,wake:pWs,bed:B+30,notes:[`起床は${fmt(pWs)}まで`,'連休は毎日少しずつ後ろへずれていく。今日から戻し始める',`寝るのは${fmt(B+30)}を目安に`]},{pb:eB,w:eW,b:eB}));
-    else days.push(mk(d,{tag:tagOf(d),dir:0,cbt:CBT0+lim(dW),pb:i?pB:pB,wake:pWs,bed:pB,notes:[`起床は${fmt(pWs)}まで（平日+1時間が上限）`,'起きて30分以内に外へ。普通の日差しで30分、晴れなら15分','起床時刻が休みの杭。足りない睡眠は寝る時刻を早めて取る','朝食を起床1時間以内に。朝食の時刻も平日から大きく動かさない']},{pb:eB,w:eW,b:eB}));
+  const last=bk.e,b0=bedOn(0),move=drift>=30;
+  const lastDay=mk(last,{tag:`${tagOf(last)}（休み最終日）`,dir:move?1:0,cbt:CBT0+drift,pb:eB,wake:eW,bed:b0,notes:[
+    move?`今夜は ${fmt(b0)} を目安に寝る。眠くないのに早く横になっても寝つけないので、無理に早めない`:`今夜はいつもどおり ${fmt(B)} に寝る`,
+    `${fmt(b0-120)} から照明を落とし、画面も暗く。明るい店には寄らない`,
+    `夕食は ${fmt(b0-210)} ごろまでに、軽めに`,
+    `明日は ${fmt(W)} に起きる。目覚ましは1回で起きる`]});
+  lastDay.cur=sleepSegs(eB,eW,eB);
+  days.push(lastDay);
+  for(let k=0;k<need;k++){
+    const d=addDays(last,k+1),bed=bedOn(k+1),done=k===need-1;
+    days.push(mk(d,{tag:k?`休み明け${k+1}日目`:'休み明け',dir:move?1:0,cbt:CBT0+Math.max(0,drift-60*(k+1)),pb:k?bedOn(k):b0,wake:W,bed,notes:[
+      k===0?`${fmt(W)} に起きる。眠くても二度寝しない（ここがいちばん効く）`:`今日も ${fmt(W)} に起きる`,
+      '起きて30分以内に外の光を。普通の日差しで30分、晴れなら15分。通勤は日の当たる側を歩く',
+      '朝食を起きて1時間以内に。少なくてもよいので時刻を守る',
+      'カフェインは午前中だけ。昼寝は15時より前に20分まで',
+      done?`今夜は ${fmt(bed)} に寝る。これで元どおり`:`今夜は ${fmt(bed)} を目安に。少しずつ平日の時刻へ戻す`]}));
   }
-  const back=addDays(e,1);
-  days.push(mk(back,{tag:'休み明け',dir:0,cbt:CBT0,pb:B,wake:W,bed:B,notes:['起きて30分以内に外の光。通勤は日の当たる側を歩く','朝食を抜かない。カフェインは午前中に寄せる']},{pb:eB,w:W,b:B}));
   const lvl=h<1?'軽い':h<2?'要注意':'大きい';
-  const range=`${md(s)}〜${md(e)}`;
-  const longB=n>=3;
+  const range=`${md(bk.s)}〜${md(bk.e)}`;
   return{
     summary:[
-      ['次の休み',longB?`${n}連休`:'週末',`${range}${manual?'（手で入力）':''}`],
-      ['社会的時差ぼけ',hrs(sjl),`睡眠の中央が休みに${sjl>=0?'後ろへ':'前へ'}ずれる・${lvl}`],
-      ['たとえると',twin?`${longB?'':'毎週'}${twin}往復`:'ほぼなし',twin?`休みの初めに西へ飛び、休み明けの朝に戻る`:'休みも平日に近い'],
-      ['提案後',hrs(sjlNew),'起床のずれを1時間以内に'],
+      ['戻す休み',n>=3?`${n}連休`:'週末',`${range}${bk.manual?'（手で入力）':''}`],
+      ['休みのずれ',drift>=15?hrs(drift):'ほぼなし',drift>=15?`体内時計が後ろへずれた・${lvl}`:'平日とほぼ同じ'],
+      ['たとえると',twin?`${twin}へ行ったのと同じ`:'ほぼなし',twin?'戻すのは東へ飛ぶのと同じ向き':'そのままで大丈夫'],
+      ['元に戻るまで',`休み明け${need}日目`,`今夜は ${fmt(b0)} を目安に寝る`],
     ],
-    lead:`休みの日の寝坊は体内時計を後ろへずらす（西行き）。休み明けはそれを一気に前へ戻す（東行き）ことになり、これが休み明けの不調の正体。起床のずれを1時間以内に抑え、休みの終わりの朝の光で先に戻し始める。`+(longB?'連休は毎日少しずつ後ろへずれていくので、最後の2日で戻し始める。':'')+'細い帯が今のパターン、太い帯が提案。',
-    groups:[{title:longB?`${n}連休（${range}）`:`週末（${range}）`,days}],weekend:true};
+    lead:move?`休みの夜更かしと寝坊で、体内時計は${hrs(drift)}後ろへずれている。戻すのは東へ飛ぶのと同じ向きで、鍵は「休み明けの朝、決まった時刻に起きて、すぐ外の光を浴びる」こと。早く寝ようとするより、早く起きて光を浴びるほうが速く戻る。1日に約1時間ずつ戻る。`:'この休みのずれは小さい。休み明けもいつもの時刻に起きて、朝の光を浴びれば十分。',
+    groups:[{title:`${n>=3?n+'連休':'週末'}のあと（${range}）`,days}],weekend:true};
 }
 
 /* ---------- render ---------- */
@@ -1638,7 +1649,7 @@ window.PLAN_ON=LS('jisa-plan')!=null?LS('jisa-plan')==='1':hadData;
 if(!hadData){legs=[];renderLegs()}            // 見本の旅程は入れない
 const wz=$('wz'),box=$('wzBox');
 const todayIso=()=>{const z=city($('origin').value).zone,p={};new Intl.DateTimeFormat('en-CA',{timeZone:z,year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date()).forEach(x=>p[x.type]=x.value);return`${p.year}-${p.month}-${p.day}`};
-const MODE_N={intl:'海外へ行く',early:'朝早く出る',weekend:'休みのずれを整える'};
+const MODE_N={intl:'海外へ行く',early:'朝早く出る',weekend:'休みのずれを戻す'};
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 /* 画面を1枚出す。q：問い、body：中身、next：次へ（null なら出さない） */
@@ -1665,7 +1676,7 @@ function onboard(){
   step(()=>sheet('いつも何時に寝て、<br>何時に起きますか',`<div class="wz-row"><label>寝る<input type="time" id="w_bed" value="${$('bed').value}" step="900"></label><label>起きる<input type="time" id="w_wake" value="${$('wake').value}" step="900"></label></div>`,
     {sub:'目覚ましなしで起きる日の時刻が、いちばん正確です。',back:false,next:()=>{$('bed').value=val('w_bed')||'23:30';$('wake').value=val('w_wake')||'07:00';step(place)}}));
   function place(){sheet('どこに住んでいますか',`<select id="w_home">${CITY_OPTS}</select>`,{sub:'いちばん近い都市を選んでください。',next:()=>{$('origin').value=val('w_home');syncLegFrom();step(purpose)}});box.querySelector('#w_home').value=$('origin').value}
-  function purpose(){sheet('何に使いますか',choices([['intl','海外へ行く','時差のある場所への移動'],['early','朝早く出る','新幹線の始発や早朝便'],['weekend','休みのずれを整える','週末や連休の寝坊を戻す'],['later','あとで決める','まずは、ふだんの一日を見る']]),{next:null});
+  function purpose(){sheet('何に使いますか',choices([['intl','海外へ行く','時差のある場所への移動'],['early','朝早く出る','新幹線の始発や早朝便'],['weekend','休みのずれを戻す','週末や連休の夜更かし・寝坊を、休み明けに戻す'],['later','あとで決める','まずは、ふだんの一日を見る']]),{next:null});
     onChoice(v=>{LS('jisa-onboarded','1');save(read());if(v==='later'){close();showTab('today')}else start(v)})}
 }
 
@@ -1727,13 +1738,13 @@ function earlyBy(){sheet('何で移動しますか',choices([['rail','新幹線�
 function wkBreak(){
   $('weFrom').value='';$('weTo').value='';
   let txt='';try{const p=planWeekend(read());txt=p.summary[0][1]+'　'+p.summary[0][2]}catch(e){}
-  sheet('次の休みは',`<p class="wz-sum">${esc(txt)}</p>${choices([['ok','この休みで作る',''],['own','期間を自分で入れる','有給でつなげる、年末年始など']])}`,{sub:'土日と祝日から見つけました。',next:null});
+  sheet('戻したい休みは',`<p class="wz-sum">${esc(txt)}</p>${choices([['ok','この休みで作る',''],['own','期間を自分で入れる','有給でつなげる、年末年始など']])}`,{sub:'休みの最終日の夜から、休み明けに元へ戻す計画を作ります。',next:null});
   onChoice(v=>{if(v==='ok')step(wkSleep);else step(wkOwn)});
 }
 function wkOwn(){sheet('休みの期間は',`<div class="wz-row"><label>初日<input type="date" id="w_f" value="${plusDays(todayIso(),1)}"></label><label>最終日<input type="date" id="w_t" value="${plusDays(todayIso(),3)}"></label></div>`,
   {next:()=>{const f=val('w_f'),t=val('w_t');if(!f||!t||t<f){alertMsg('最終日は初日と同じか、あとの日にしてください');return}$('weFrom').value=f;$('weTo').value=t;step(wkSleep)}})}
-function wkSleep(){sheet('休みの日は、ふだん<br>何時に寝て何時に起きますか',`<div class="wz-row"><label>寝る<input type="time" id="w_wb" value="${$('weBed').value}" step="900"></label><label>起きる<input type="time" id="w_ww" value="${$('weWake').value}" step="900"></label></div>`,
-  {sub:`平日は ${$('bed').value} に寝て ${$('wake').value} に起きる設定です。`,nextLabel:'計画を作る',next:()=>{$('weBed').value=val('w_wb');$('weWake').value=val('w_ww');commit('weekend')}})}
+function wkSleep(){sheet('この休みは、何時に寝て<br>何時に起きましたか',`<div class="wz-row"><label>寝る<input type="time" id="w_wb" value="${$('weBed').value}" step="900"></label><label>起きる<input type="time" id="w_ww" value="${$('weWake').value}" step="900"></label></div>`,
+  {sub:`だいたいで大丈夫です。平日は ${$('bed').value} に寝て ${$('wake').value} に起きる設定です。`,nextLabel:'計画を作る',next:()=>{$('weBed').value=val('w_wb');$('weWake').value=val('w_ww');commit('weekend')}})}
 
 function commit(m){
   mode=m;window.PLAN_ON=true;LS('jisa-plan','1');LS('jisa-onboarded','1');
@@ -1759,14 +1770,14 @@ function planCard(){
   const c=$('planCard');if(!c)return;
   const has=window.PLAN_ON&&lastPlan&&lastPlan.groups&&lastPlan.groups.length;
   $('outTrip').hidden=$('outDays').hidden=$('daysHead').hidden=!has;
-  if(!has){c.innerHTML=`<small>計画</small><b>まだ計画はありません</b>${choices([['intl','海外へ行く','時差のある場所への移動'],['early','朝早く出る','新幹線の始発や早朝便'],['weekend','休みのずれを整える','週末や連休の寝坊を戻す']])}`;
+  if(!has){c.innerHTML=`<small>計画</small><b>まだ計画はありません</b>${choices([['intl','海外へ行く','時差のある場所への移動'],['early','朝早く出る','新幹線の始発や早朝便'],['weekend','休みのずれを戻す','週末や連休の夜更かし・寝坊を、休み明けに戻す']])}`;
     c.querySelectorAll('.wz-choices button').forEach(b=>b.onclick=()=>start(b.dataset.v));return}
   let line='';
   if(mode==='intl')line=[$('origin').value,...legs.map(l=>l.to)].join(' → ')+(legs[0]?`<br><span>${md(new Date(legs[0].date+'T00:00:00Z'))} ${legs[0].time} 発</span>`:'');
   if(mode==='early')line=`${md(new Date($('eDate').value+'T00:00:00Z'))} ${$('eWake').value} 起き・${MODE[$('eBy').value]?MODE[$('eBy').value].n:''}`;
   if(mode==='weekend')line=lastPlan.summary[0][1]+'<br><span>'+lastPlan.summary[0][2]+'</span>';
   c.innerHTML=`<small>${MODE_N[mode]}</small><b>${line}</b><div class="pl-btns"><button type="button" class="ghost" id="plEdit">作り直す</button><button type="button" class="linkbtn" id="plDel">計画を消す</button></div>`;
-  $('plEdit').onclick=()=>{stack=[];step(()=>{sheet('どんな計画を作りますか',choices([['intl','海外へ行く','時差のある場所への移動'],['early','朝早く出る','新幹線の始発や早朝便'],['weekend','休みのずれを整える','週末や連休の寝坊を戻す']]),{next:null,back:false});onChoice(v=>start(v))})};
+  $('plEdit').onclick=()=>{stack=[];step(()=>{sheet('どんな計画を作りますか',choices([['intl','海外へ行く','時差のある場所への移動'],['early','朝早く出る','新幹線の始発や早朝便'],['weekend','休みのずれを戻す','週末や連休の夜更かし・寝坊を、休み明けに戻す']]),{next:null,back:false});onChoice(v=>start(v))})};
   $('plDel').onclick=e=>{const b=e.currentTarget;if(!b.dataset.sure){b.dataset.sure='1';b.textContent='もう一度押すと消えます';setTimeout(()=>{if(b.isConnected){delete b.dataset.sure;b.textContent='計画を消す'}},4000);return}window.PLAN_ON=false;LS('jisa-plan','0');try{if(pushId)pushStop()}catch(e){}render();planCard()};
 }
 window.planCard=planCard;
